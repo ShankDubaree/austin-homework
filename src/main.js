@@ -35,6 +35,8 @@ let tensGuess = "";
 let onesGuess = "";
 let mathsField = "tens";
 let view = "home";
+let count = 0;
+let hearsLeft = 3;
 
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
@@ -50,8 +52,10 @@ function later(ms, fn) {
 
 function speak(text) {
   try {
+    speechSynthesis.cancel();
     const say = new SpeechSynthesisUtterance(text);
     say.rate = 0.75;
+    say.volume = 1;
     speechSynthesis.speak(say);
   } catch (e) {}
 }
@@ -70,8 +74,8 @@ function makeTiles(word) {
   return shuffle([...word.split(""), ...extraLetters]);
 }
 
-function cubes(count, kind) {
-  return Array.from({ length: count }, () =>
+function cubes(countN, kind) {
+  return Array.from({ length: countN }, () =>
     kind === "ten" ? `<span class="rod"></span>` : `<span class="cube"></span>`
   ).join("");
 }
@@ -83,22 +87,34 @@ function startSequence() {
   listening = true;
   typed = "";
   tiles = makeTiles(word);
+  count = 5;
+  hearsLeft = 3;
   draw();
 
-  later(5000, () => {
-    speak(word);
-    later(2000, () => {
-      speak(word);
-      later(2000, () => {
+  function tick() {
+    later(1000, () => {
+      count -= 1;
+      if (count > 0) {
+        draw();
+        tick();
+      } else {
         speak(word);
-        later(1200, () => {
-          covered = true;
-          listening = false;
-          draw();
+        later(2000, () => {
+          speak(word);
+          later(2000, () => {
+            speak(word);
+            later(800, () => {
+              covered = true;
+              listening = false;
+              draw();
+            });
+          });
         });
-      });
+        draw();
+      }
     });
-  });
+  }
+  tick();
 }
 
 function draw() {
@@ -117,14 +133,19 @@ function draw() {
 
   if (view === "spell") {
     const word = words[index];
-    const canType = covered && !listening;
+    const canType = covered && !listening && count === 0;
     const canCheck = canType && typed.length > 0;
     app.innerHTML = `
       <main class="card">
         <p class="week">Spellings</p>
         <p class="progress">Word ${index + 1} of ${words.length}</p>
+        ${count > 0 ? `<div class="count">${count}</div>` : ""}
         <h1 class="word">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1>
-        <div class="answer">${typed || (canType ? "tap the letters" : "watch and listen")}</div>
+        <div class="answer">${
+          count > 0
+            ? "look at the word"
+            : typed || (canType ? "tap the letters" : "watch and listen")
+        }</div>
         <p id="result"></p>
         <div class="tiles">
           ${tiles
@@ -134,6 +155,7 @@ function draw() {
             )
             .join("")}
         </div>
+        <div class="big next-word" data-act="hear">Hear the word</div>
         <div class="big next ${canCheck ? "" : "off"}" data-act="check-spell">Check</div>
         <div class="row">
           <div class="big" data-act="again">Again</div>
@@ -195,6 +217,7 @@ function handle(act, val) {
     return;
   }
   if (act === "spell") {
+    speak("ready");
     view = "spell";
     index = 0;
     startSequence();
@@ -210,8 +233,12 @@ function handle(act, val) {
     draw();
     return;
   }
+  if (act === "hear") {
+    speak(words[index]);
+    return;
+  }
   if (act === "letter") {
-    if (!covered || listening) return;
+    if (!covered || listening || count > 0) return;
     typed += val;
     draw();
     return;

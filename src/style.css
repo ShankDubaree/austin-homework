@@ -242,3 +242,10 @@ a.big[href="#home"] {
   opacity: 0.4;
   pointer-events: none;
 }
+.count {
+  font-size: 72px;
+  line-height: 1;
+  color: #f4d35e;
+  margin: 8px 0 0;
+  text-shadow: 3px 3px 0 #c41e3a;
+}
