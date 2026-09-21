@@ -24,7 +24,6 @@ const maths = [
 const extras = "abcdefghijklmnopqrstuvwxyz";
 const app = document.querySelector("#app");
 
-let screen = "home";
 let index = 0;
 let covered = false;
 let listening = false;
@@ -47,9 +46,11 @@ function later(ms, fn) {
 }
 
 function speak(text) {
-  const say = new SpeechSynthesisUtterance(text);
-  say.rate = 0.75;
-  speechSynthesis.speak(say);
+  try {
+    const say = new SpeechSynthesisUtterance(text);
+    say.rate = 0.75;
+    speechSynthesis.speak(say);
+  } catch (e) {}
 }
 
 function shuffle(list) {
@@ -66,19 +67,14 @@ function makeTiles(word) {
   return shuffle([...word.split(""), ...extraLetters]);
 }
 
-function startSpelling() {
-  screen = "spelling";
-  index = 0;
-  startSequence(words[0]);
-}
-
-function startSequence(word) {
+function startSequence() {
+  const word = words[index];
   clearTimers();
   covered = false;
   listening = true;
   typed = "";
   tiles = makeTiles(word);
-  render();
+  drawSpelling();
 
   later(5000, () => {
     speak(word);
@@ -89,99 +85,11 @@ function startSequence(word) {
         later(1200, () => {
           covered = true;
           listening = false;
-          render();
+          drawSpelling();
         });
       });
     });
   });
-}
-
-function startMaths() {
-  clearTimers();
-  screen = "maths";
-  mathsIndex = 0;
-  tensGuess = "";
-  onesGuess = "";
-  mathsField = "tens";
-  render();
-}
-
-function goHome() {
-  clearTimers();
-  screen = "home";
-  render();
-}
-
-function nextWord() {
-  index = (index + 1) % words.length;
-  startSequence(words[index]);
-}
-
-function addLetter(button) {
-  if (!covered || listening || button.disabled) return;
-  typed += button.textContent;
-  render();
-}
-
-function checkSpelling() {
-  const word = words[index];
-  if (!typed) return;
-  const result = document.querySelector("#result");
-  if (typed === word) {
-    result.textContent = "Yes! Well done";
-    result.className = "ok";
-    speak("Well done");
-  } else {
-    typed = "";
-    tiles = makeTiles(word);
-    render();
-    document.querySelector("#result").textContent = "Try again";
-    document.querySelector("#result").className = "no";
-  }
-}
-
-function pickTens() {
-  mathsField = "tens";
-  render();
-}
-
-function pickOnes() {
-  mathsField = "ones";
-  render();
-}
-
-function addNumber(button) {
-  if (mathsField === "tens") tensGuess = button.textContent;
-  else onesGuess = button.textContent;
-  render();
-}
-
-function checkMaths() {
-  const q = maths[mathsIndex];
-  const result = document.querySelector("#result");
-  if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
-    result.textContent = "Yes! Well done";
-    result.className = "ok";
-    speak("Well done");
-  } else {
-    result.textContent = "Try again";
-    result.className = "no";
-  }
-}
-
-function clearMaths() {
-  tensGuess = "";
-  onesGuess = "";
-  mathsField = "tens";
-  render();
-}
-
-function nextMaths() {
-  mathsIndex = (mathsIndex + 1) % maths.length;
-  tensGuess = "";
-  onesGuess = "";
-  mathsField = "tens";
-  render();
 }
 
 function cubes(count, kind) {
@@ -190,19 +98,20 @@ function cubes(count, kind) {
   ).join("");
 }
 
-function renderHome() {
+function drawHome() {
+  clearTimers();
   app.innerHTML = `
     <main class="card">
       <p class="week">Austin</p>
       <h1 class="word">Homework</h1>
       <p class="progress">Pick one</p>
-      <button type="button" class="big next" onclick="startSpelling()">Spellings</button>
-      <button type="button" class="big next-word" onclick="startMaths()">Maths</button>
+      <a class="big next" href="#spell">Spellings</a>
+      <a class="big next-word" href="#maths">Maths</a>
     </main>
   `;
 }
 
-function renderSpelling() {
+function drawSpelling() {
   const word = words[index];
   const canType = covered && !listening;
   const canCheck = canType && typed.length > 0;
@@ -217,22 +126,22 @@ function renderSpelling() {
       <div class="tiles">
         ${tiles
           .map(
-            (letter) =>
-              `<button type="button" class="tile" onclick="addLetter(this)" ${canType ? "" : "disabled"}>${letter}</button>`
+            (letter, i) =>
+              `<a class="tile ${canType ? "" : "off"}" href="#spell/l/${i}/${letter}">${letter}</a>`
           )
           .join("")}
       </div>
-      <button type="button" class="big next" onclick="checkSpelling()" ${canCheck ? "" : "disabled"}>Check</button>
+      <a class="big next ${canCheck ? "" : "off"}" href="#spell/check">Check</a>
       <div class="row">
-        <button type="button" class="big" onclick="startSequence(words[index])">Again</button>
-        <button type="button" class="big next-word" onclick="nextWord()">Next word</button>
+        <a class="big" href="#spell/again">Again</a>
+        <a class="big next-word" href="#spell/next">Next word</a>
       </div>
-      <button type="button" class="big" onclick="goHome()">Home</button>
+      <a class="big" href="#home">Home</a>
     </main>
   `;
 }
 
-function renderMaths() {
+function drawMaths() {
   const q = maths[mathsIndex];
   const canCheck = tensGuess !== "" && onesGuess !== "";
 
@@ -256,43 +165,109 @@ function renderMaths() {
       </p>
       <p id="result"></p>
       <div class="row">
-        <button type="button" class="big" onclick="pickTens()">Tens</button>
-        <button type="button" class="big" onclick="pickOnes()">Ones</button>
+        <a class="big" href="#maths/tens">Tens</a>
+        <a class="big" href="#maths/ones">Ones</a>
       </div>
       <div class="tiles">
         ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-          .map((n) => `<button type="button" class="tile num" onclick="addNumber(this)">${n}</button>`)
+          .map((n) => `<a class="tile num" href="#maths/n/${n}">${n}</a>`)
           .join("")}
       </div>
-      <button type="button" class="big next" onclick="checkMaths()" ${canCheck ? "" : "disabled"}>Check</button>
+      <a class="big next ${canCheck ? "" : "off"}" href="#maths/check">Check</a>
       <div class="row">
-        <button type="button" class="big" onclick="clearMaths()">Clear</button>
-        <button type="button" class="big next-word" onclick="nextMaths()">Next</button>
+        <a class="big" href="#maths/clear">Clear</a>
+        <a class="big next-word" href="#maths/next">Next</a>
       </div>
-      <button type="button" class="big" onclick="goHome()">Home</button>
+      <a class="big" href="#home">Home</a>
     </main>
   `;
 }
 
-function render() {
-  if (screen === "home") renderHome();
-  else if (screen === "spelling") renderSpelling();
-  else renderMaths();
+function route() {
+  const hash = (location.hash || "#home").replace(/^#/, "");
+  const parts = hash.split("/");
+
+  if (parts[0] === "spell") {
+    if (parts[1] === "l" && covered && !listening) {
+      typed += parts[3] || "";
+      history.replaceState(null, "", "#spell");
+      drawSpelling();
+      return;
+    }
+    if (parts[1] === "check") {
+      const word = words[index];
+      history.replaceState(null, "", "#spell");
+      drawSpelling();
+      const result = document.querySelector("#result");
+      if (typed === word) {
+        result.textContent = "Yes! Well done";
+        result.className = "ok";
+        speak("Well done");
+      } else {
+        typed = "";
+        tiles = makeTiles(word);
+        drawSpelling();
+        document.querySelector("#result").textContent = "Try again";
+        document.querySelector("#result").className = "no";
+      }
+      return;
+    }
+    if (parts[1] === "again") {
+      history.replaceState(null, "", "#spell");
+      startSequence();
+      return;
+    }
+    if (parts[1] === "next") {
+      index = (index + 1) % words.length;
+      history.replaceState(null, "", "#spell");
+      startSequence();
+      return;
+    }
+    startSequence();
+    return;
+  }
+
+  if (parts[0] === "maths") {
+    if (parts[1] === "tens") mathsField = "tens";
+    if (parts[1] === "ones") mathsField = "ones";
+    if (parts[1] === "n") {
+      if (mathsField === "tens") tensGuess = parts[2];
+      else onesGuess = parts[2];
+    }
+    if (parts[1] === "clear") {
+      tensGuess = "";
+      onesGuess = "";
+      mathsField = "tens";
+    }
+    if (parts[1] === "next") {
+      mathsIndex = (mathsIndex + 1) % maths.length;
+      tensGuess = "";
+      onesGuess = "";
+      mathsField = "tens";
+    }
+    if (parts[1] === "check") {
+      history.replaceState(null, "", "#maths");
+      drawMaths();
+      const q = maths[mathsIndex];
+      const result = document.querySelector("#result");
+      if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
+        result.textContent = "Yes! Well done";
+        result.className = "ok";
+        speak("Well done");
+      } else {
+        result.textContent = "Try again";
+        result.className = "no";
+      }
+      return;
+    }
+    history.replaceState(null, "", "#maths");
+    drawMaths();
+    return;
+  }
+
+  drawHome();
 }
 
-window.startSpelling = startSpelling;
-window.startMaths = startMaths;
-window.startSequence = startSequence;
-window.goHome = goHome;
-window.nextWord = nextWord;
-window.addLetter = addLetter;
-window.checkSpelling = checkSpelling;
-window.pickTens = pickTens;
-window.pickOnes = pickOnes;
-window.addNumber = addNumber;
-window.checkMaths = checkMaths;
-window.clearMaths = clearMaths;
-window.nextMaths = nextMaths;
-window.words = words;
-
-render();
+window.addEventListener("hashchange", route);
+window.addEventListener("load", route);
+route();

@@ -211,3 +211,23 @@ button:disabled {
   background: #c41e3a;
   border-radius: 8px;
 }
+a.big,
+a.tile,
+a.next,
+a.next-word {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+a.off {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+#home,
+a.big[href="#home"] {
+  width: 100%;
+  margin-top: 10px;
+}
