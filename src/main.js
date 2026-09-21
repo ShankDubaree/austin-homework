@@ -36,23 +36,6 @@ let tensGuess = "";
 let onesGuess = "";
 let mathsField = "tens";
 
-function tap(el, fn) {
-  if (!el) return;
-  let locked = false;
-  const run = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (locked) return;
-    locked = true;
-    fn(event);
-    setTimeout(() => {
-      locked = false;
-    }, 300);
-  };
-  el.addEventListener("click", run);
-  el.addEventListener("touchend", run, { passive: false });
-}
-
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
   timers = [];
@@ -129,6 +112,78 @@ function goHome() {
   render();
 }
 
+function nextWord() {
+  index = (index + 1) % words.length;
+  startSequence(words[index]);
+}
+
+function addLetter(button) {
+  if (!covered || listening || button.disabled) return;
+  typed += button.textContent;
+  render();
+}
+
+function checkSpelling() {
+  const word = words[index];
+  if (!typed) return;
+  const result = document.querySelector("#result");
+  if (typed === word) {
+    result.textContent = "Yes! Well done";
+    result.className = "ok";
+    speak("Well done");
+  } else {
+    typed = "";
+    tiles = makeTiles(word);
+    render();
+    document.querySelector("#result").textContent = "Try again";
+    document.querySelector("#result").className = "no";
+  }
+}
+
+function pickTens() {
+  mathsField = "tens";
+  render();
+}
+
+function pickOnes() {
+  mathsField = "ones";
+  render();
+}
+
+function addNumber(button) {
+  if (mathsField === "tens") tensGuess = button.textContent;
+  else onesGuess = button.textContent;
+  render();
+}
+
+function checkMaths() {
+  const q = maths[mathsIndex];
+  const result = document.querySelector("#result");
+  if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
+    result.textContent = "Yes! Well done";
+    result.className = "ok";
+    speak("Well done");
+  } else {
+    result.textContent = "Try again";
+    result.className = "no";
+  }
+}
+
+function clearMaths() {
+  tensGuess = "";
+  onesGuess = "";
+  mathsField = "tens";
+  render();
+}
+
+function nextMaths() {
+  mathsIndex = (mathsIndex + 1) % maths.length;
+  tensGuess = "";
+  onesGuess = "";
+  mathsField = "tens";
+  render();
+}
+
 function cubes(count, kind) {
   return Array.from({ length: count }, () =>
     kind === "ten" ? `<span class="rod"></span>` : `<span class="cube"></span>`
@@ -141,12 +196,10 @@ function renderHome() {
       <p class="week">Austin</p>
       <h1 class="word">Homework</h1>
       <p class="progress">Pick one</p>
-      <button type="button" class="big next" id="spell">Spellings</button>
-      <button type="button" class="big next-word" id="maths">Maths</button>
+      <button type="button" class="big next" onclick="startSpelling()">Spellings</button>
+      <button type="button" class="big next-word" onclick="startMaths()">Maths</button>
     </main>
   `;
-  tap(document.querySelector("#spell"), startSpelling);
-  tap(document.querySelector("#maths"), startMaths);
 }
 
 function renderSpelling() {
@@ -165,49 +218,18 @@ function renderSpelling() {
         ${tiles
           .map(
             (letter) =>
-              `<button type="button" class="tile" ${canType ? "" : "disabled"}>${letter}</button>`
+              `<button type="button" class="tile" onclick="addLetter(this)" ${canType ? "" : "disabled"}>${letter}</button>`
           )
           .join("")}
       </div>
-      <button type="button" class="big next" id="check" ${canCheck ? "" : "disabled"}>Check</button>
+      <button type="button" class="big next" onclick="checkSpelling()" ${canCheck ? "" : "disabled"}>Check</button>
       <div class="row">
-        <button type="button" class="big" id="again">Again</button>
-        <button type="button" class="big next-word" id="next">Next word</button>
+        <button type="button" class="big" onclick="startSequence(words[index])">Again</button>
+        <button type="button" class="big next-word" onclick="nextWord()">Next word</button>
       </div>
-      <button type="button" class="big" id="home">Home</button>
+      <button type="button" class="big" onclick="goHome()">Home</button>
     </main>
   `;
-
-  document.querySelectorAll(".tile").forEach((button) => {
-    tap(button, () => {
-      if (!canType || button.disabled) return;
-      typed += button.textContent;
-      render();
-    });
-  });
-
-  tap(document.querySelector("#check"), () => {
-    if (!canCheck) return;
-    const result = document.querySelector("#result");
-    if (typed === word) {
-      result.textContent = "Yes! Well done";
-      result.className = "ok";
-      speak("Well done");
-    } else {
-      typed = "";
-      tiles = makeTiles(word);
-      render();
-      document.querySelector("#result").textContent = "Try again";
-      document.querySelector("#result").className = "no";
-    }
-  });
-
-  tap(document.querySelector("#again"), () => startSequence(word));
-  tap(document.querySelector("#next"), () => {
-    index = (index + 1) % words.length;
-    startSequence(words[index]);
-  });
-  tap(document.querySelector("#home"), goHome);
 }
 
 function renderMaths() {
@@ -234,68 +256,22 @@ function renderMaths() {
       </p>
       <p id="result"></p>
       <div class="row">
-        <button type="button" class="big" id="pick-tens">Tens</button>
-        <button type="button" class="big" id="pick-ones">Ones</button>
+        <button type="button" class="big" onclick="pickTens()">Tens</button>
+        <button type="button" class="big" onclick="pickOnes()">Ones</button>
       </div>
       <div class="tiles">
         ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-          .map((n) => `<button type="button" class="tile num">${n}</button>`)
+          .map((n) => `<button type="button" class="tile num" onclick="addNumber(this)">${n}</button>`)
           .join("")}
       </div>
-      <button type="button" class="big next" id="check" ${canCheck ? "" : "disabled"}>Check</button>
+      <button type="button" class="big next" onclick="checkMaths()" ${canCheck ? "" : "disabled"}>Check</button>
       <div class="row">
-        <button type="button" class="big" id="clear">Clear</button>
-        <button type="button" class="big next-word" id="next">Next</button>
+        <button type="button" class="big" onclick="clearMaths()">Clear</button>
+        <button type="button" class="big next-word" onclick="nextMaths()">Next</button>
       </div>
-      <button type="button" class="big" id="home">Home</button>
+      <button type="button" class="big" onclick="goHome()">Home</button>
     </main>
   `;
-
-  tap(document.querySelector("#pick-tens"), () => {
-    mathsField = "tens";
-    render();
-  });
-  tap(document.querySelector("#pick-ones"), () => {
-    mathsField = "ones";
-    render();
-  });
-
-  document.querySelectorAll(".num").forEach((button) => {
-    tap(button, () => {
-      if (mathsField === "tens") tensGuess = button.textContent;
-      else onesGuess = button.textContent;
-      render();
-    });
-  });
-
-  tap(document.querySelector("#check"), () => {
-    const result = document.querySelector("#result");
-    if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
-      result.textContent = "Yes! Well done";
-      result.className = "ok";
-      speak("Well done");
-    } else {
-      result.textContent = "Try again";
-      result.className = "no";
-    }
-  });
-
-  tap(document.querySelector("#clear"), () => {
-    tensGuess = "";
-    onesGuess = "";
-    mathsField = "tens";
-    render();
-  });
-
-  tap(document.querySelector("#next"), () => {
-    mathsIndex = (mathsIndex + 1) % maths.length;
-    tensGuess = "";
-    onesGuess = "";
-    mathsField = "tens";
-    render();
-  });
-
-  tap(document.querySelector("#home"), goHome);
 }
 
 function render() {
@@ -303,5 +279,20 @@ function render() {
   else if (screen === "spelling") renderSpelling();
   else renderMaths();
 }
+
+window.startSpelling = startSpelling;
+window.startMaths = startMaths;
+window.startSequence = startSequence;
+window.goHome = goHome;
+window.nextWord = nextWord;
+window.addLetter = addLetter;
+window.checkSpelling = checkSpelling;
+window.pickTens = pickTens;
+window.pickOnes = pickOnes;
+window.addNumber = addNumber;
+window.checkMaths = checkMaths;
+window.clearMaths = clearMaths;
+window.nextMaths = nextMaths;
+window.words = words;
 
 render();
