@@ -51,13 +51,9 @@ function later(ms, fn) {
 }
 
 function speak(text) {
-  try {
-    speechSynthesis.cancel();
-    const say = new SpeechSynthesisUtterance(text);
-    say.rate = 0.75;
-    say.volume = 1;
-    speechSynthesis.speak(say);
-  } catch (e) {}
+  const file = `${import.meta.env.BASE_URL}sounds/${text}.mp3`;
+  const audio = new Audio(file);
+  audio.play().catch(() => {});
 }
 
 function shuffle(list) {
