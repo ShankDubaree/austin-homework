@@ -231,3 +231,14 @@ a.big[href="#home"] {
   width: 100%;
   margin-top: 10px;
 }
+.big,
+.tile {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
+.off {
+  opacity: 0.4;
+  pointer-events: none;
+}
