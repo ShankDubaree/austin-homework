@@ -34,11 +34,14 @@ let mathsIndex = 0;
 let tensGuess = "";
 let onesGuess = "";
 let mathsField = "tens";
+let view = "home";
 
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
   timers = [];
-  speechSynthesis.cancel();
+  try {
+    speechSynthesis.cancel();
+  } catch (e) {}
 }
 
 function later(ms, fn) {
@@ -67,6 +70,12 @@ function makeTiles(word) {
   return shuffle([...word.split(""), ...extraLetters]);
 }
 
+function cubes(count, kind) {
+  return Array.from({ length: count }, () =>
+    kind === "ten" ? `<span class="rod"></span>` : `<span class="cube"></span>`
+  ).join("");
+}
+
 function startSequence() {
   const word = words[index];
   clearTimers();
@@ -74,7 +83,7 @@ function startSequence() {
   listening = true;
   typed = "";
   tiles = makeTiles(word);
-  drawSpelling();
+  draw();
 
   later(5000, () => {
     speak(word);
@@ -85,66 +94,59 @@ function startSequence() {
         later(1200, () => {
           covered = true;
           listening = false;
-          drawSpelling();
+          draw();
         });
       });
     });
   });
 }
 
-function cubes(count, kind) {
-  return Array.from({ length: count }, () =>
-    kind === "ten" ? `<span class="rod"></span>` : `<span class="cube"></span>`
-  ).join("");
-}
+function draw() {
+  if (view === "home") {
+    app.innerHTML = `
+      <main class="card">
+        <p class="week">Austin</p>
+        <h1 class="word">Homework</h1>
+        <p class="progress">Pick one</p>
+        <div class="big next" data-act="spell">Spellings</div>
+        <div class="big next-word" data-act="maths">Maths</div>
+      </main>
+    `;
+    return;
+  }
 
-function drawHome() {
-  clearTimers();
-  app.innerHTML = `
-    <main class="card">
-      <p class="week">Austin</p>
-      <h1 class="word">Homework</h1>
-      <p class="progress">Pick one</p>
-      <a class="big next" href="#spell">Spellings</a>
-      <a class="big next-word" href="#maths">Maths</a>
-    </main>
-  `;
-}
+  if (view === "spell") {
+    const word = words[index];
+    const canType = covered && !listening;
+    const canCheck = canType && typed.length > 0;
+    app.innerHTML = `
+      <main class="card">
+        <p class="week">Spellings</p>
+        <p class="progress">Word ${index + 1} of ${words.length}</p>
+        <h1 class="word">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1>
+        <div class="answer">${typed || (canType ? "tap the letters" : "watch and listen")}</div>
+        <p id="result"></p>
+        <div class="tiles">
+          ${tiles
+            .map(
+              (letter) =>
+                `<div class="tile ${canType ? "" : "off"}" data-act="letter" data-val="${letter}">${letter}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="big next ${canCheck ? "" : "off"}" data-act="check-spell">Check</div>
+        <div class="row">
+          <div class="big" data-act="again">Again</div>
+          <div class="big next-word" data-act="next-word">Next word</div>
+        </div>
+        <div class="big" data-act="home">Home</div>
+      </main>
+    `;
+    return;
+  }
 
-function drawSpelling() {
-  const word = words[index];
-  const canType = covered && !listening;
-  const canCheck = canType && typed.length > 0;
-
-  app.innerHTML = `
-    <main class="card">
-      <p class="week">Spellings</p>
-      <p class="progress">Word ${index + 1} of ${words.length}</p>
-      <h1 class="word">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1>
-      <div class="answer">${typed || (canType ? "tap the letters" : "watch and listen")}</div>
-      <p id="result"></p>
-      <div class="tiles">
-        ${tiles
-          .map(
-            (letter, i) =>
-              `<a class="tile ${canType ? "" : "off"}" href="#spell/l/${i}/${letter}">${letter}</a>`
-          )
-          .join("")}
-      </div>
-      <a class="big next ${canCheck ? "" : "off"}" href="#spell/check">Check</a>
-      <div class="row">
-        <a class="big" href="#spell/again">Again</a>
-        <a class="big next-word" href="#spell/next">Next word</a>
-      </div>
-      <a class="big" href="#home">Home</a>
-    </main>
-  `;
-}
-
-function drawMaths() {
   const q = maths[mathsIndex];
   const canCheck = tensGuess !== "" && onesGuess !== "";
-
   app.innerHTML = `
     <main class="card">
       <p class="week">Make and Count</p>
@@ -165,109 +167,138 @@ function drawMaths() {
       </p>
       <p id="result"></p>
       <div class="row">
-        <a class="big" href="#maths/tens">Tens</a>
-        <a class="big" href="#maths/ones">Ones</a>
+        <div class="big" data-act="tens">Tens</div>
+        <div class="big" data-act="ones">Ones</div>
       </div>
       <div class="tiles">
         ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-          .map((n) => `<a class="tile num" href="#maths/n/${n}">${n}</a>`)
+          .map((n) => `<div class="tile num" data-act="num" data-val="${n}">${n}</div>`)
           .join("")}
       </div>
-      <a class="big next ${canCheck ? "" : "off"}" href="#maths/check">Check</a>
+      <div class="big next ${canCheck ? "" : "off"}" data-act="check-maths">Check</div>
       <div class="row">
-        <a class="big" href="#maths/clear">Clear</a>
-        <a class="big next-word" href="#maths/next">Next</a>
+        <div class="big" data-act="clear">Clear</div>
+        <div class="big next-word" data-act="next-maths">Next</div>
       </div>
-      <a class="big" href="#home">Home</a>
+      <div class="big" data-act="home">Home</div>
     </main>
   `;
 }
 
-function route() {
-  const hash = (location.hash || "#home").replace(/^#/, "");
-  const parts = hash.split("/");
+function handle(act, val) {
+  if (!act) return;
 
-  if (parts[0] === "spell") {
-    if (parts[1] === "l" && covered && !listening) {
-      typed += parts[3] || "";
-      history.replaceState(null, "", "#spell");
-      drawSpelling();
-      return;
-    }
-    if (parts[1] === "check") {
-      const word = words[index];
-      history.replaceState(null, "", "#spell");
-      drawSpelling();
-      const result = document.querySelector("#result");
-      if (typed === word) {
-        result.textContent = "Yes! Well done";
-        result.className = "ok";
-        speak("Well done");
-      } else {
-        typed = "";
-        tiles = makeTiles(word);
-        drawSpelling();
-        document.querySelector("#result").textContent = "Try again";
-        document.querySelector("#result").className = "no";
-      }
-      return;
-    }
-    if (parts[1] === "again") {
-      history.replaceState(null, "", "#spell");
-      startSequence();
-      return;
-    }
-    if (parts[1] === "next") {
-      index = (index + 1) % words.length;
-      history.replaceState(null, "", "#spell");
-      startSequence();
-      return;
-    }
+  if (act === "home") {
+    view = "home";
+    clearTimers();
+    draw();
+    return;
+  }
+  if (act === "spell") {
+    view = "spell";
+    index = 0;
     startSequence();
     return;
   }
-
-  if (parts[0] === "maths") {
-    if (parts[1] === "tens") mathsField = "tens";
-    if (parts[1] === "ones") mathsField = "ones";
-    if (parts[1] === "n") {
-      if (mathsField === "tens") tensGuess = parts[2];
-      else onesGuess = parts[2];
-    }
-    if (parts[1] === "clear") {
-      tensGuess = "";
-      onesGuess = "";
-      mathsField = "tens";
-    }
-    if (parts[1] === "next") {
-      mathsIndex = (mathsIndex + 1) % maths.length;
-      tensGuess = "";
-      onesGuess = "";
-      mathsField = "tens";
-    }
-    if (parts[1] === "check") {
-      history.replaceState(null, "", "#maths");
-      drawMaths();
-      const q = maths[mathsIndex];
-      const result = document.querySelector("#result");
-      if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
-        result.textContent = "Yes! Well done";
-        result.className = "ok";
-        speak("Well done");
-      } else {
-        result.textContent = "Try again";
-        result.className = "no";
-      }
-      return;
-    }
-    history.replaceState(null, "", "#maths");
-    drawMaths();
+  if (act === "maths") {
+    view = "maths";
+    mathsIndex = 0;
+    tensGuess = "";
+    onesGuess = "";
+    mathsField = "tens";
+    clearTimers();
+    draw();
     return;
   }
-
-  drawHome();
+  if (act === "letter") {
+    if (!covered || listening) return;
+    typed += val;
+    draw();
+    return;
+  }
+  if (act === "check-spell") {
+    const word = words[index];
+    const result = document.querySelector("#result");
+    if (typed === word) {
+      result.textContent = "Yes! Well done";
+      result.className = "ok";
+      speak("Well done");
+    } else {
+      typed = "";
+      tiles = makeTiles(word);
+      draw();
+      document.querySelector("#result").textContent = "Try again";
+      document.querySelector("#result").className = "no";
+    }
+    return;
+  }
+  if (act === "again") {
+    startSequence();
+    return;
+  }
+  if (act === "next-word") {
+    index = (index + 1) % words.length;
+    startSequence();
+    return;
+  }
+  if (act === "tens") {
+    mathsField = "tens";
+    draw();
+    return;
+  }
+  if (act === "ones") {
+    mathsField = "ones";
+    draw();
+    return;
+  }
+  if (act === "num") {
+    if (mathsField === "tens") tensGuess = val;
+    else onesGuess = val;
+    draw();
+    return;
+  }
+  if (act === "check-maths") {
+    const q = maths[mathsIndex];
+    const result = document.querySelector("#result");
+    if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
+      result.textContent = "Yes! Well done";
+      result.className = "ok";
+      speak("Well done");
+    } else {
+      result.textContent = "Try again";
+      result.className = "no";
+    }
+    return;
+  }
+  if (act === "clear") {
+    tensGuess = "";
+    onesGuess = "";
+    mathsField = "tens";
+    draw();
+    return;
+  }
+  if (act === "next-maths") {
+    mathsIndex = (mathsIndex + 1) % maths.length;
+    tensGuess = "";
+    onesGuess = "";
+    mathsField = "tens";
+    draw();
+  }
 }
 
-window.addEventListener("hashchange", route);
-window.addEventListener("load", route);
-route();
+function findAct(node) {
+  let el = node;
+  while (el && el !== app) {
+    if (el.getAttribute && el.getAttribute("data-act")) return el;
+    el = el.parentNode;
+  }
+  return null;
+}
+
+app.onclick = function (event) {
+  const el = findAct(event.target);
+  if (!el || (el.className || "").indexOf("off") !== -1) return;
+  handle(el.getAttribute("data-act"), el.getAttribute("data-val"));
+};
+
+draw();
