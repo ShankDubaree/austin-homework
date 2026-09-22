@@ -41,6 +41,40 @@ let count = 0;
 let pulsing = false;
 let passGuess = "";
 let loginError = "";
+let spellScore = 0;
+let mathsScore = 0;
+let spellDone = {};
+let mathsDone = {};
+let lastKind = "spell";
+
+function scores() {
+  try {
+    return JSON.parse(localStorage.getItem("austin-scores") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveScore() {
+  const list = scores();
+  list.unshift({
+    when: new Date().toLocaleString(),
+    spell: spellScore,
+    spellMax: words.length,
+    maths: mathsScore,
+    mathsMax: maths.length,
+  });
+  localStorage.setItem("austin-scores", JSON.stringify(list.slice(0, 20)));
+}
+
+function lastScore() {
+  return scores()[0];
+}
+
+function stars(got, max) {
+  const n = Math.round((got / max) * 5);
+  return "★".repeat(n) + "☆".repeat(5 - n);
+}
 
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
@@ -61,7 +95,6 @@ function speak(text) {
     pulsing = false;
     if (view === "spell") draw();
   });
-
   if (words.indexOf(text) !== -1) {
     const audio = new Audio("/austin-homework/sounds/" + text + ".mp3");
     audio.playsInline = true;
@@ -133,75 +166,103 @@ function startSequence() {
   tick();
 }
 
-function drawLogin() {
-  app.innerHTML = `
-    <main class="card">
-      <p class="week">Homework</p>
-      <h1 class="word">Who is it?</h1>
-      <div class="login-wrap">
-        <div class="hero-btn" data-act="pick-austin">
-          <img src="${HERO}" alt="Austin" />
-        </div>
-        <div class="big next" data-act="pick-austin">Austin</div>
-      </div>
-    </main>
-  `;
+function finishSpell() {
+  lastKind = "spell";
+  saveScore();
+  view = "result";
+  draw();
+  if (spellScore === words.length) fireConfetti();
 }
 
-function drawPass() {
-  app.innerHTML = `
-    <main class="card">
-      <p class="week">Austin</p>
-      <div class="login-wrap">
-        <div class="hero-btn">
-          <img src="${HERO}" alt="Austin" />
-        </div>
-      </div>
-      <p class="progress">Type the password</p>
-      <div class="answer">${passGuess || "••••••"}</div>
-      <p id="result" class="${loginError ? "no" : ""}">${loginError}</p>
-      <div class="tiles">
-        ${"abcdefghijklmnopqrstuvwxyz"
-          .split("")
-          .map(
-            (letter) =>
-              `<div class="tile" data-act="pass-letter" data-val="${letter}">${letter}</div>`
-          )
-          .join("")}
-      </div>
-      <div class="big next" data-act="pass-go">Go</div>
-      <div class="row">
-        <div class="big" data-act="pass-clear">Clear</div>
-        <div class="big next-word" data-act="logout">Back</div>
-      </div>
-    </main>
-  `;
+function finishMaths() {
+  lastKind = "maths";
+  saveScore();
+  view = "result";
+  draw();
 }
 
 function draw() {
   if (view === "login") {
-    drawLogin();
+    app.innerHTML = `
+      <main class="card">
+        <p class="week">Homework</p>
+        <h1 class="word">Who is it?</h1>
+        <div class="login-wrap">
+          <div class="hero-btn" data-act="pick-austin">
+            <img src="${HERO}" alt="Austin" />
+          </div>
+          <div class="big next" data-act="pick-austin">Austin</div>
+        </div>
+      </main>
+    `;
     return;
   }
+
   if (view === "pass") {
-    drawPass();
+    app.innerHTML = `
+      <main class="card">
+        <p class="week">Austin</p>
+        <div class="login-wrap">
+          <div class="hero-btn"><img src="${HERO}" alt="Austin" /></div>
+        </div>
+        <p class="progress">Type the password</p>
+        <div class="answer">${passGuess || "••••••"}</div>
+        <p id="result" class="${loginError ? "no" : ""}">${loginError}</p>
+        <div class="tiles">
+          ${"abcdefghijklmnopqrstuvwxyz"
+            .split("")
+            .map(
+              (letter) =>
+                `<div class="tile" data-act="pass-letter" data-val="${letter}">${letter}</div>`
+            )
+            .join("")}
+        </div>
+        <div class="big next" data-act="pass-go">Go</div>
+        <div class="row">
+          <div class="big" data-act="pass-clear">Clear</div>
+          <div class="big next-word" data-act="logout">Back</div>
+        </div>
+      </main>
+    `;
     return;
   }
 
   if (view === "home") {
+    const last = lastScore();
     app.innerHTML = `
       <main class="card">
         <div class="login-wrap">
-          <div class="hero-btn">
-            <img src="${HERO}" alt="Austin" />
-          </div>
+          <div class="hero-btn"><img src="${HERO}" alt="Austin" /></div>
         </div>
         <p class="week">Austin</p>
         <h1 class="word">Homework</h1>
-        <p class="progress">Pick one</p>
+        <p class="progress">${
+          last
+            ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}`
+            : "Pick one"
+        }</p>
         <div class="big next" data-act="spell">Spellings</div>
         <div class="big next-word" data-act="maths">Maths</div>
         <div class="big" data-act="logout">Log out</div>
+      </main>
+    `;
+    return;
+  }
+
+  if (view === "result") {
+    const got = lastKind === "spell" ? spellScore : mathsScore;
+    const max = lastKind === "spell" ? words.length : maths.length;
+    app.innerHTML = `
+      <main class="card">
+        <p class="week">Hero score</p>
+        <div class="login-wrap">
+          <div class="hero-btn"><img src="${HERO}" alt="Austin" /></div>
+        </div>
+        <div class="score-big">${got} / ${max}</div>
+        <div class="stars">${stars(got, max)}</div>
+        <p class="progress">Saved on this tablet</p>
+        <div class="big next" data-act="home">Home</div>
+        <div class="big next-word" data-act="${lastKind}">Play again</div>
       </main>
     `;
     return;
@@ -213,7 +274,7 @@ function draw() {
     const canCheck = canType && typed.length > 0;
     app.innerHTML = `
       <main class="card">
-        <p class="week">Spellings</p>
+        <p class="week">Spellings · ${spellScore} pts</p>
         <p class="progress">Word ${index + 1} of ${words.length}</p>
         ${count > 0 ? `<div class="count">${count}</div>` : ""}
         <h1 class="word ${pulsing ? "pulse" : ""}">${
@@ -249,7 +310,7 @@ function draw() {
   const canCheck = tensGuess !== "" && onesGuess !== "";
   app.innerHTML = `
     <main class="card">
-      <p class="week">Make and Count</p>
+      <p class="week">Maths · ${mathsScore} pts</p>
       <p class="progress">Question ${mathsIndex + 1} of ${maths.length}</p>
       <div class="build">
         <div class="rods">${cubes(q.tens, "ten")}</div>
@@ -336,12 +397,16 @@ function handle(act, val) {
   if (act === "spell") {
     view = "spell";
     index = 0;
+    spellScore = 0;
+    spellDone = {};
     startSequence();
     return;
   }
   if (act === "maths") {
     view = "maths";
     mathsIndex = 0;
+    mathsScore = 0;
+    mathsDone = {};
     tensGuess = "";
     onesGuess = "";
     mathsField = "tens";
@@ -363,6 +428,10 @@ function handle(act, val) {
     const word = words[index];
     const result = document.querySelector("#result");
     if (typed === word) {
+      if (!spellDone[index]) {
+        spellScore += 1;
+        spellDone[index] = true;
+      }
       result.textContent = "Yes! Well done";
       result.className = "ok";
       speak("Well done");
@@ -380,8 +449,11 @@ function handle(act, val) {
     return;
   }
   if (act === "next-word") {
-    index = (index + 1) % words.length;
-    startSequence();
+    if (index >= words.length - 1) finishSpell();
+    else {
+      index += 1;
+      startSequence();
+    }
     return;
   }
   if (act === "tens") {
@@ -404,6 +476,10 @@ function handle(act, val) {
     const q = maths[mathsIndex];
     const result = document.querySelector("#result");
     if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
+      if (!mathsDone[mathsIndex]) {
+        mathsScore += 1;
+        mathsDone[mathsIndex] = true;
+      }
       result.textContent = "Yes! Well done";
       result.className = "ok";
       speak("Well done");
@@ -421,11 +497,14 @@ function handle(act, val) {
     return;
   }
   if (act === "next-maths") {
-    mathsIndex = (mathsIndex + 1) % maths.length;
-    tensGuess = "";
-    onesGuess = "";
-    mathsField = "tens";
-    draw();
+    if (mathsIndex >= maths.length - 1) finishMaths();
+    else {
+      mathsIndex += 1;
+      tensGuess = "";
+      onesGuess = "";
+      mathsField = "tens";
+      draw();
+    }
   }
 }
 
@@ -436,6 +515,18 @@ function findAct(node) {
     el = el.parentNode;
   }
   return null;
+}
+
+function fireConfetti() {
+  for (let i = 0; i < 48; i++) {
+    const bit = document.createElement("div");
+    bit.className = "bit";
+    bit.style.left = Math.random() * 100 + "vw";
+    bit.style.background = ["#c41e3a", "#f4d35e", "#2d5bff", "#fff"][i % 4];
+    bit.style.animationDelay = Math.random() * 0.4 + "s";
+    document.body.appendChild(bit);
+    setTimeout(() => bit.remove(), 2500);
+  }
 }
 
 app.onclick = function (event) {
