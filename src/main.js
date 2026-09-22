@@ -1,16 +1,16 @@
 import "./style.css";
 
 const words = [
-  "some",
-  "come",
-  "were",
-  "your",
-  "school",
-  "where",
-  "said",
-  "are",
-  "house",
-  "friend",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
 ];
 
 const maths = [
