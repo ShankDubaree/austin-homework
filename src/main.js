@@ -47,6 +47,14 @@ let spellDone = {};
 let mathsDone = {};
 let lastKind = "spell";
 
+function wordPoints(word) {
+  return word.length;
+}
+
+function spellMax() {
+  return words.reduce((sum, word) => sum + word.length, 0);
+}
+
 function scores() {
   try {
     return JSON.parse(localStorage.getItem("austin-scores") || "[]");
@@ -60,7 +68,7 @@ function saveScore() {
   list.unshift({
     when: new Date().toLocaleString(),
     spell: spellScore,
-    spellMax: words.length,
+    spellMax: spellMax(),
     maths: mathsScore,
     mathsMax: maths.length,
   });
@@ -72,8 +80,20 @@ function lastScore() {
 }
 
 function stars(got, max) {
-  const n = Math.round((got / max) * 5);
+  const n = max ? Math.round((got / max) * 5) : 0;
   return "★".repeat(n) + "☆".repeat(5 - n);
+}
+
+function fireConfetti() {
+  for (let i = 0; i < 48; i++) {
+    const bit = document.createElement("div");
+    bit.className = "bit";
+    bit.style.left = Math.random() * 100 + "vw";
+    bit.style.background = ["#c41e3a", "#f4d35e", "#2d5bff", "#fff"][i % 4];
+    bit.style.animationDelay = Math.random() * 0.4 + "s";
+    document.body.appendChild(bit);
+    setTimeout(() => bit.remove(), 2500);
+  }
 }
 
 function clearTimers() {
@@ -171,7 +191,7 @@ function finishSpell() {
   saveScore();
   view = "result";
   draw();
-  if (spellScore === words.length) fireConfetti();
+  if (spellScore === spellMax()) fireConfetti();
 }
 
 function finishMaths() {
@@ -179,6 +199,7 @@ function finishMaths() {
   saveScore();
   view = "result";
   draw();
+  if (mathsScore === maths.length) fireConfetti();
 }
 
 function draw() {
@@ -251,7 +272,7 @@ function draw() {
 
   if (view === "result") {
     const got = lastKind === "spell" ? spellScore : mathsScore;
-    const max = lastKind === "spell" ? words.length : maths.length;
+    const max = lastKind === "spell" ? spellMax() : maths.length;
     app.innerHTML = `
       <main class="card">
         <p class="week">Hero score</p>
@@ -275,7 +296,7 @@ function draw() {
     app.innerHTML = `
       <main class="card">
         <p class="week">Spellings · ${spellScore} pts</p>
-        <p class="progress">Word ${index + 1} of ${words.length}</p>
+        <p class="progress">Word ${index + 1} of ${words.length} · ${wordPoints(word)} pts</p>
         ${count > 0 ? `<div class="count">${count}</div>` : ""}
         <h1 class="word ${pulsing ? "pulse" : ""}">${
           covered ? "⭐".repeat(Math.min(word.length, 6)) : word
@@ -429,12 +450,19 @@ function handle(act, val) {
     const result = document.querySelector("#result");
     if (typed === word) {
       if (!spellDone[index]) {
-        spellScore += 1;
+        spellScore += wordPoints(word);
         spellDone[index] = true;
       }
-      result.textContent = "Yes! Well done";
+      result.textContent = "Correct Well Done!";
       result.className = "ok";
       speak("Well done");
+      later(1400, () => {
+        if (index >= words.length - 1) finishSpell();
+        else {
+          index += 1;
+          startSequence();
+        }
+      });
     } else {
       typed = "";
       tiles = makeTiles(word);
@@ -480,9 +508,19 @@ function handle(act, val) {
         mathsScore += 1;
         mathsDone[mathsIndex] = true;
       }
-      result.textContent = "Yes! Well done";
+      result.textContent = "Correct Well Done!";
       result.className = "ok";
       speak("Well done");
+      later(1400, () => {
+        if (mathsIndex >= maths.length - 1) finishMaths();
+        else {
+          mathsIndex += 1;
+          tensGuess = "";
+          onesGuess = "";
+          mathsField = "tens";
+          draw();
+        }
+      });
     } else {
       result.textContent = "Try again";
       result.className = "no";
@@ -515,18 +553,6 @@ function findAct(node) {
     el = el.parentNode;
   }
   return null;
-}
-
-function fireConfetti() {
-  for (let i = 0; i < 48; i++) {
-    const bit = document.createElement("div");
-    bit.className = "bit";
-    bit.style.left = Math.random() * 100 + "vw";
-    bit.style.background = ["#c41e3a", "#f4d35e", "#2d5bff", "#fff"][i % 4];
-    bit.style.animationDelay = Math.random() * 0.4 + "s";
-    document.body.appendChild(bit);
-    setTimeout(() => bit.remove(), 2500);
-  }
 }
 
 app.onclick = function (event) {
