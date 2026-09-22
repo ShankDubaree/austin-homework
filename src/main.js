@@ -36,7 +36,6 @@ let onesGuess = "";
 let mathsField = "tens";
 let view = "home";
 let count = 0;
-let hearsLeft = 3;
 
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
@@ -51,9 +50,19 @@ function later(ms, fn) {
 }
 
 function speak(text) {
-  const file = `${import.meta.env.BASE_URL}sounds/${text}.mp3`;
-  const audio = new Audio(file);
-  audio.play().catch(() => {});
+  const hasFile = words.indexOf(text) !== -1;
+  if (hasFile) {
+    const audio = new Audio("/austin-homework/sounds/" + text + ".mp3");
+    audio.playsInline = true;
+    const play = audio.play();
+    if (play && play.catch) play.catch(function () {});
+  }
+  try {
+    speechSynthesis.cancel();
+    const say = new SpeechSynthesisUtterance(text);
+    say.rate = 0.75;
+    speechSynthesis.speak(say);
+  } catch (e) {}
 }
 
 function shuffle(list) {
@@ -70,8 +79,8 @@ function makeTiles(word) {
   return shuffle([...word.split(""), ...extraLetters]);
 }
 
-function cubes(countN, kind) {
-  return Array.from({ length: countN }, () =>
+function cubes(n, kind) {
+  return Array.from({ length: n }, () =>
     kind === "ten" ? `<span class="rod"></span>` : `<span class="cube"></span>`
   ).join("");
 }
@@ -84,7 +93,6 @@ function startSequence() {
   typed = "";
   tiles = makeTiles(word);
   count = 5;
-  hearsLeft = 3;
   draw();
 
   function tick() {
@@ -213,7 +221,6 @@ function handle(act, val) {
     return;
   }
   if (act === "spell") {
-    speak("ready");
     view = "spell";
     index = 0;
     startSequence();
