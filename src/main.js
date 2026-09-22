@@ -96,6 +96,17 @@ function fireConfetti() {
   }
 }
 
+function flashWellDone(done) {
+  const note = document.createElement("div");
+  note.className = "flash-ok";
+  note.textContent = "Correct Well Done!";
+  document.body.appendChild(note);
+  later(1400, () => {
+    note.remove();
+    done();
+  });
+}
+
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
   timers = [];
@@ -456,7 +467,7 @@ function handle(act, val) {
       result.textContent = "Correct Well Done!";
       result.className = "ok";
       speak("Well done");
-      later(1400, () => {
+      flashWellDone(() => {
         if (index >= words.length - 1) finishSpell();
         else {
           index += 1;
@@ -511,7 +522,7 @@ function handle(act, val) {
       result.textContent = "Correct Well Done!";
       result.className = "ok";
       speak("Well done");
-      later(1400, () => {
+      flashWellDone(() => {
         if (mathsIndex >= maths.length - 1) finishMaths();
         else {
           mathsIndex += 1;
