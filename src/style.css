@@ -249,3 +249,20 @@ a.big[href="#home"] {
   margin: 8px 0 0;
   text-shadow: 3px 3px 0 #c41e3a;
 }
+.word {
+  transform-origin: center;
+}
+
+.word.pulse {
+  animation: pulse-word 0.85s ease;
+}
+
+@keyframes pulse-word {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.28);
+  }
+}

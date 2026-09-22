@@ -36,6 +36,7 @@ let onesGuess = "";
 let mathsField = "tens";
 let view = "home";
 let count = 0;
+let pulsing = false;
 
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
@@ -50,6 +51,13 @@ function later(ms, fn) {
 }
 
 function speak(text) {
+  pulsing = true;
+  if (view === "spell") draw();
+  later(850, () => {
+    pulsing = false;
+    if (view === "spell") draw();
+  });
+
   const hasFile = words.indexOf(text) !== -1;
   if (hasFile) {
     const audio = new Audio("/austin-homework/sounds/" + text + ".mp3");
@@ -93,6 +101,7 @@ function startSequence() {
   typed = "";
   tiles = makeTiles(word);
   count = 5;
+  pulsing = false;
   draw();
 
   function tick() {
@@ -144,7 +153,9 @@ function draw() {
         <p class="week">Spellings</p>
         <p class="progress">Word ${index + 1} of ${words.length}</p>
         ${count > 0 ? `<div class="count">${count}</div>` : ""}
-        <h1 class="word">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1>
+        <h1 class="word ${pulsing ? "pulse" : ""}">${
+          covered ? "⭐".repeat(Math.min(word.length, 6)) : word
+        }</h1>
         <div class="answer">${
           count > 0
             ? "look at the word"
