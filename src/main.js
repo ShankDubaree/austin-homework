@@ -23,6 +23,8 @@ const maths = [
 
 const extras = "abcdefghijklmnopqrstuvwxyz";
 const app = document.querySelector("#app");
+const PASSWORD = "baxter";
+const HERO = "/austin-homework/hero.png";
 
 let index = 0;
 let covered = false;
@@ -34,9 +36,11 @@ let mathsIndex = 0;
 let tensGuess = "";
 let onesGuess = "";
 let mathsField = "tens";
-let view = "home";
+let view = "login";
 let count = 0;
 let pulsing = false;
+let passGuess = "";
+let loginError = "";
 
 function clearTimers() {
   timers.forEach((id) => clearTimeout(id));
@@ -58,8 +62,7 @@ function speak(text) {
     if (view === "spell") draw();
   });
 
-  const hasFile = words.indexOf(text) !== -1;
-  if (hasFile) {
+  if (words.indexOf(text) !== -1) {
     const audio = new Audio("/austin-homework/sounds/" + text + ".mp3");
     audio.playsInline = true;
     const play = audio.play();
@@ -130,15 +133,75 @@ function startSequence() {
   tick();
 }
 
+function drawLogin() {
+  app.innerHTML = `
+    <main class="card">
+      <p class="week">Homework</p>
+      <h1 class="word">Who is it?</h1>
+      <div class="login-wrap">
+        <div class="hero-btn" data-act="pick-austin">
+          <img src="${HERO}" alt="Austin" />
+        </div>
+        <div class="big next" data-act="pick-austin">Austin</div>
+      </div>
+    </main>
+  `;
+}
+
+function drawPass() {
+  app.innerHTML = `
+    <main class="card">
+      <p class="week">Austin</p>
+      <div class="login-wrap">
+        <div class="hero-btn">
+          <img src="${HERO}" alt="Austin" />
+        </div>
+      </div>
+      <p class="progress">Type the password</p>
+      <div class="answer">${passGuess || "••••••"}</div>
+      <p id="result" class="${loginError ? "no" : ""}">${loginError}</p>
+      <div class="tiles">
+        ${"abcdefghijklmnopqrstuvwxyz"
+          .split("")
+          .map(
+            (letter) =>
+              `<div class="tile" data-act="pass-letter" data-val="${letter}">${letter}</div>`
+          )
+          .join("")}
+      </div>
+      <div class="big next" data-act="pass-go">Go</div>
+      <div class="row">
+        <div class="big" data-act="pass-clear">Clear</div>
+        <div class="big next-word" data-act="logout">Back</div>
+      </div>
+    </main>
+  `;
+}
+
 function draw() {
+  if (view === "login") {
+    drawLogin();
+    return;
+  }
+  if (view === "pass") {
+    drawPass();
+    return;
+  }
+
   if (view === "home") {
     app.innerHTML = `
       <main class="card">
+        <div class="login-wrap">
+          <div class="hero-btn">
+            <img src="${HERO}" alt="Austin" />
+          </div>
+        </div>
         <p class="week">Austin</p>
         <h1 class="word">Homework</h1>
         <p class="progress">Pick one</p>
         <div class="big next" data-act="spell">Spellings</div>
         <div class="big next-word" data-act="maths">Maths</div>
+        <div class="big" data-act="logout">Log out</div>
       </main>
     `;
     return;
@@ -225,6 +288,45 @@ function draw() {
 function handle(act, val) {
   if (!act) return;
 
+  if (act === "logout") {
+    view = "login";
+    passGuess = "";
+    loginError = "";
+    clearTimers();
+    draw();
+    return;
+  }
+  if (act === "pick-austin") {
+    view = "pass";
+    passGuess = "";
+    loginError = "";
+    draw();
+    return;
+  }
+  if (act === "pass-letter") {
+    passGuess += val;
+    loginError = "";
+    draw();
+    return;
+  }
+  if (act === "pass-clear") {
+    passGuess = "";
+    loginError = "";
+    draw();
+    return;
+  }
+  if (act === "pass-go") {
+    if (passGuess === PASSWORD) {
+      view = "home";
+      passGuess = "";
+      loginError = "";
+    } else {
+      loginError = "Try again";
+      passGuess = "";
+    }
+    draw();
+    return;
+  }
   if (act === "home") {
     view = "home";
     clearTimers();

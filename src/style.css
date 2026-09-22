@@ -266,3 +266,36 @@ a.big[href="#home"] {
     transform: scale(1.28);
   }
 }
+.login-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.hero-btn {
+  width: 140px;
+  height: 140px;
+  padding: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #f4d35e;
+  background: #151f4a;
+}
+
+.hero-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pass {
+  width: 100%;
+  min-height: 64px;
+  font-size: 28px;
+  text-align: center;
+  border: 3px solid #f4d35e;
+  border-radius: 16px;
+  background: #151f4a;
+  color: #fff;
+  box-sizing: border-box;
+}
