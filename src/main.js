@@ -1,30 +1,40 @@
 import "./style.css";
 
 const words = [
-  "one",
-  "two",
-  "three",
-  "four",
-  "five",
-  "six",
-  "seven",
-  "eight",
-  "nine",
-  "ten",
+  "sniff",
+  "well",
+  "across",
+  "class",
+  "click",
+  "smack",
+  "kitchen",
+  "crutch",
+  "was",
+  "said",
 ];
 
-const maths = [
-  { tens: 2, ones: 1 },
-  { tens: 1, ones: 5 },
-  { tens: 3, ones: 4 },
-  { tens: 4, ones: 5 },
-  { tens: 6, ones: 2 },
+const compares = [
+  { left: 12, right: 35 },
+  { left: 8, right: 10 },
+  { left: 43, right: 27 },
+  { left: 88, right: 91 },
+  { left: 36, right: 41 },
+  { left: 77, right: 77 },
+  { left: 28, right: 92 },
+  { left: 21, right: 98 },
+  { left: 46, right: 32 },
+  { left: 58, right: 57 },
+  { left: 88, right: 56 },
+  { left: 96, right: 95 },
+  { left: 22, right: 22 },
+  { left: 16, right: 16 },
 ];
 
 const extras = "abcdefghijklmnopqrstuvwxyz";
 const app = document.querySelector("#app");
 const PASSWORD = "baxter";
 const HERO = "/austin-homework/hero.png";
+const HARVEST = "/austin-homework/Harvest%20Assembly.MP4";
 
 let index = 0;
 let covered = false;
@@ -32,10 +42,7 @@ let listening = false;
 let typed = "";
 let tiles = [];
 let timers = [];
-let mathsIndex = 0;
-let tensGuess = "";
-let onesGuess = "";
-let mathsField = "tens";
+let cmpIndex = 0;
 let view = "login";
 let count = 0;
 let pulsing = false;
@@ -55,6 +62,12 @@ function spellMax() {
   return words.reduce((sum, word) => sum + word.length, 0);
 }
 
+function cmpSign(item) {
+  if (item.left > item.right) return ">";
+  if (item.left < item.right) return "<";
+  return "=";
+}
+
 function scores() {
   try {
     return JSON.parse(localStorage.getItem("austin-scores") || "[]");
@@ -70,7 +83,7 @@ function saveScore() {
     spell: spellScore,
     spellMax: spellMax(),
     maths: mathsScore,
-    mathsMax: maths.length,
+    mathsMax: compares.length,
   });
   localStorage.setItem("austin-scores", JSON.stringify(list.slice(0, 20)));
 }
@@ -126,12 +139,6 @@ function speak(text) {
     pulsing = false;
     if (view === "spell") draw();
   });
-  if (words.indexOf(text) !== -1) {
-    const audio = new Audio("/austin-homework/sounds/" + text + ".mp3");
-    audio.playsInline = true;
-    const play = audio.play();
-    if (play && play.catch) play.catch(function () {});
-  }
   try {
     speechSynthesis.cancel();
     const say = new SpeechSynthesisUtterance(text);
@@ -152,12 +159,6 @@ function makeTiles(word) {
     .filter((letter) => !word.includes(letter))
     .slice(0, word.length < 5 ? 3 : 2);
   return shuffle([...word.split(""), ...extraLetters]);
-}
-
-function cubes(n, kind) {
-  return Array.from({ length: n }, () =>
-    kind === "ten" ? `<span class="rod"></span>` : `<span class="cube"></span>`
-  ).join("");
 }
 
 function startSequence() {
@@ -210,7 +211,7 @@ function finishMaths() {
   saveScore();
   view = "result";
   draw();
-  if (mathsScore === maths.length) fireConfetti();
+  if (mathsScore === compares.length) fireConfetti();
 }
 
 function draw() {
@@ -274,8 +275,22 @@ function draw() {
             : "Pick one"
         }</p>
         <div class="big next" data-act="spell">Spellings</div>
-        <div class="big next-word" data-act="maths">Maths</div>
+        <div class="big next-word" data-act="maths">Greater or less</div>
+        <div class="big next-word" data-act="harvest">Harvest Assembly Line</div>
         <div class="big" data-act="logout">Log out</div>
+      </main>
+    `;
+    return;
+  }
+
+  if (view === "harvest") {
+    app.innerHTML = `
+      <main class="card">
+        <p class="week">Harvest</p>
+        <h1 class="word">Assembly line</h1>
+        <p class="progress">Watch and learn</p>
+        <video class="clip" controls playsinline src="${HARVEST}"></video>
+        <div class="big" data-act="home">Home</div>
       </main>
     `;
     return;
@@ -283,7 +298,7 @@ function draw() {
 
   if (view === "result") {
     const got = lastKind === "spell" ? spellScore : mathsScore;
-    const max = lastKind === "spell" ? spellMax() : maths.length;
+    const max = lastKind === "spell" ? spellMax() : compares.length;
     app.innerHTML = `
       <main class="card">
         <p class="week">Hero score</p>
@@ -308,6 +323,7 @@ function draw() {
       <main class="card">
         <p class="week">Spellings · ${spellScore} pts</p>
         <p class="progress">Word ${index + 1} of ${words.length} · ${wordPoints(word)} pts</p>
+        <p class="rule">After a single vowel, z l f s double: zz ll ff ss</p>
         ${count > 0 ? `<div class="count">${count}</div>` : ""}
         <h1 class="word ${pulsing ? "pulse" : ""}">${
           covered ? "⭐".repeat(Math.min(word.length, 6)) : word
@@ -338,41 +354,24 @@ function draw() {
     return;
   }
 
-  const q = maths[mathsIndex];
-  const canCheck = tensGuess !== "" && onesGuess !== "";
+  const q = compares[cmpIndex];
   app.innerHTML = `
     <main class="card">
-      <p class="week">Maths · ${mathsScore} pts</p>
-      <p class="progress">Question ${mathsIndex + 1} of ${maths.length}</p>
-      <div class="build">
-        <div class="rods">${cubes(q.tens, "ten")}</div>
-        <div class="ones">${cubes(q.ones, "one")}</div>
+      <p class="week">Greater or less · ${mathsScore} pts</p>
+      <p class="progress">Question ${cmpIndex + 1} of ${compares.length}</p>
+      <p class="progress">Open side faces the bigger number</p>
+      <div class="compare">
+        <span class="cmp-num">${q.left}</span>
+        <span class="cmp-box">?</span>
+        <span class="cmp-num">${q.right}</span>
       </div>
-      <p class="sum-line ${mathsField === "tens" ? "on" : ""}">
-        There ${q.tens === 1 ? "is" : "are"}
-        <span class="blank">${tensGuess || "?"}</span>
-        ${q.tens === 1 ? "ten" : "tens"}.
-      </p>
-      <p class="sum-line ${mathsField === "ones" ? "on" : ""}">
-        There ${q.ones === 1 ? "is" : "are"}
-        <span class="blank">${onesGuess || "?"}</span>
-        ${q.ones === 1 ? "one" : "ones"}.
-      </p>
       <p id="result"></p>
-      <div class="row">
-        <div class="big" data-act="tens">Tens</div>
-        <div class="big" data-act="ones">Ones</div>
+      <div class="row3">
+        <div class="big next" data-act="cmp" data-val="&lt;">&lt;</div>
+        <div class="big" data-act="cmp" data-val="=">=</div>
+        <div class="big next-word" data-act="cmp" data-val="&gt;">&gt;</div>
       </div>
-      <div class="tiles">
-        ${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-          .map((n) => `<div class="tile num" data-act="num" data-val="${n}">${n}</div>`)
-          .join("")}
-      </div>
-      <div class="big next ${canCheck ? "" : "off"}" data-act="check-maths">Check</div>
-      <div class="row">
-        <div class="big" data-act="clear">Clear</div>
-        <div class="big next-word" data-act="next-maths">Next</div>
-      </div>
+      <p class="progress">less &nbsp;&nbsp; equal &nbsp;&nbsp; more</p>
       <div class="big" data-act="home">Home</div>
     </main>
   `;
@@ -426,6 +425,12 @@ function handle(act, val) {
     draw();
     return;
   }
+  if (act === "harvest") {
+    view = "harvest";
+    clearTimers();
+    draw();
+    return;
+  }
   if (act === "spell") {
     view = "spell";
     index = 0;
@@ -436,12 +441,9 @@ function handle(act, val) {
   }
   if (act === "maths") {
     view = "maths";
-    mathsIndex = 0;
+    cmpIndex = 0;
     mathsScore = 0;
     mathsDone = {};
-    tensGuess = "";
-    onesGuess = "";
-    mathsField = "tens";
     clearTimers();
     draw();
     return;
@@ -495,64 +497,25 @@ function handle(act, val) {
     }
     return;
   }
-  if (act === "tens") {
-    mathsField = "tens";
-    draw();
-    return;
-  }
-  if (act === "ones") {
-    mathsField = "ones";
-    draw();
-    return;
-  }
-  if (act === "num") {
-    if (mathsField === "tens") tensGuess = val;
-    else onesGuess = val;
-    draw();
-    return;
-  }
-  if (act === "check-maths") {
-    const q = maths[mathsIndex];
-    const result = document.querySelector("#result");
-    if (Number(tensGuess) === q.tens && Number(onesGuess) === q.ones) {
-      if (!mathsDone[mathsIndex]) {
+  if (act === "cmp") {
+    const q = compares[cmpIndex];
+    if (val === cmpSign(q)) {
+      if (!mathsDone[cmpIndex]) {
         mathsScore += 1;
-        mathsDone[mathsIndex] = true;
+        mathsDone[cmpIndex] = true;
       }
-      result.textContent = "Correct Well Done!";
-      result.className = "ok";
       speak("Well done");
       flashWellDone(() => {
-        if (mathsIndex >= maths.length - 1) finishMaths();
+        if (cmpIndex >= compares.length - 1) finishMaths();
         else {
-          mathsIndex += 1;
-          tensGuess = "";
-          onesGuess = "";
-          mathsField = "tens";
+          cmpIndex += 1;
           draw();
         }
       });
     } else {
+      const result = document.querySelector("#result");
       result.textContent = "Try again";
       result.className = "no";
-    }
-    return;
-  }
-  if (act === "clear") {
-    tensGuess = "";
-    onesGuess = "";
-    mathsField = "tens";
-    draw();
-    return;
-  }
-  if (act === "next-maths") {
-    if (mathsIndex >= maths.length - 1) finishMaths();
-    else {
-      mathsIndex += 1;
-      tensGuess = "";
-      onesGuess = "";
-      mathsField = "tens";
-      draw();
     }
   }
 }

@@ -364,3 +364,10 @@ a.big[href="#home"] {
     transform: scale(1);
   }
 }
+.clip {
+  width: 100%;
+  max-height: 240px;
+  margin: 12px 0 16px;
+  border-radius: 16px;
+  background: #000;
+}
