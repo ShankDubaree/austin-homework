@@ -374,3 +374,71 @@ a.big[href="#home"] {
   border-radius: 16px;
   background: #000;
 }
+
+.compare {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+
+.cmp-num {
+  font-size: 72px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 3px 3px 0 #c41e3a;
+}
+
+.cmp-box {
+  width: 72px;
+  height: 72px;
+  border: 5px dashed #f4d35e;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  color: #f4d35e;
+}
+
+.hint {
+  color: #f4d35e;
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cmp-btn {
+  min-height: 110px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #0b1b4a;
+  font-weight: 800;
+}
+
+.cmp-btn .sign {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.cmp-less {
+  background: #5aa7ff;
+}
+
+.cmp-same {
+  background: #7dff9a;
+}
+
+.cmp-more {
+  background: #f4d35e;
+}

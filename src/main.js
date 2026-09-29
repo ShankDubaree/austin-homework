@@ -217,7 +217,7 @@ function finishMaths() {
 function startHarvest() {
   const clip = document.querySelector("#harvest-clip");
   if (!clip) return;
-  clip.muted = true;
+  clip.muted = false;
   const go = clip.play();
   if (go && go.catch) go.catch(function () {});
 }
@@ -303,7 +303,6 @@ function draw() {
           controls
           playsinline
           autoplay
-          muted
           loop
           src="${HARVEST}"
         ></video>
@@ -375,21 +374,29 @@ function draw() {
   const q = compares[cmpIndex];
   app.innerHTML = `
     <main class="card">
-      <p class="week">Greater or less · ${mathsScore} pts</p>
-      <p class="progress">Question ${cmpIndex + 1} of ${compares.length}</p>
-      <p class="progress">Open side faces the bigger number</p>
+      <p class="week">Which is bigger?</p>
+      <p class="progress">${cmpIndex + 1} of ${compares.length} · ${mathsScore} pts</p>
       <div class="compare">
         <span class="cmp-num">${q.left}</span>
         <span class="cmp-box">?</span>
         <span class="cmp-num">${q.right}</span>
       </div>
+      <p class="hint">The open side eats the bigger number</p>
       <p id="result"></p>
       <div class="row3">
-        <div class="big next" data-act="cmp" data-val="&lt;">&lt;</div>
-        <div class="big" data-act="cmp" data-val="=">=</div>
-        <div class="big next-word" data-act="cmp" data-val="&gt;">&gt;</div>
+        <div class="cmp-btn cmp-less" data-act="cmp" data-val="&lt;">
+          <span class="sign">&lt;</span>
+          <span>less</span>
+        </div>
+        <div class="cmp-btn cmp-same" data-act="cmp" data-val="=">
+          <span class="sign">=</span>
+          <span>same</span>
+        </div>
+        <div class="cmp-btn cmp-more" data-act="cmp" data-val="&gt;">
+          <span class="sign">&gt;</span>
+          <span>more</span>
+        </div>
       </div>
-      <p class="progress">less &nbsp;&nbsp; equal &nbsp;&nbsp; more</p>
       <div class="big" data-act="home">Home</div>
     </main>
   `;
