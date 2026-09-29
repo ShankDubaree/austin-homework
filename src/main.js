@@ -214,6 +214,14 @@ function finishMaths() {
   if (mathsScore === compares.length) fireConfetti();
 }
 
+function startHarvest() {
+  const clip = document.querySelector("#harvest-clip");
+  if (!clip) return;
+  clip.muted = true;
+  const go = clip.play();
+  if (go && go.catch) go.catch(function () {});
+}
+
 function draw() {
   if (view === "login") {
     app.innerHTML = `
@@ -289,10 +297,20 @@ function draw() {
         <p class="week">Harvest</p>
         <h1 class="word">Assembly line</h1>
         <p class="progress">Watch and learn</p>
-        <video class="clip" controls playsinline src="${HARVEST}"></video>
+        <video
+          id="harvest-clip"
+          class="clip"
+          controls
+          playsinline
+          autoplay
+          muted
+          loop
+          src="${HARVEST}"
+        ></video>
         <div class="big" data-act="home">Home</div>
       </main>
     `;
+    startHarvest();
     return;
   }
 
