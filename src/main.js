@@ -43,6 +43,7 @@ let typed = "";
 let tiles = [];
 let timers = [];
 let cmpIndex = 0;
+let cmpGuess = "";
 let view = "login";
 let count = 0;
 let pulsing = false;
@@ -378,7 +379,7 @@ function draw() {
       <p class="progress">${cmpIndex + 1} of ${compares.length} · ${mathsScore} pts</p>
       <div class="compare">
         <span class="cmp-num">${q.left}</span>
-        <span class="cmp-box">?</span>
+        <span class="cmp-box">${cmpGuess || "?"}</span>
         <span class="cmp-num">${q.right}</span>
       </div>
       <p class="hint">The open side eats the bigger number</p>
@@ -467,6 +468,7 @@ function handle(act, val) {
   if (act === "maths") {
     view = "maths";
     cmpIndex = 0;
+    cmpGuess = "";
     mathsScore = 0;
     mathsDone = {};
     clearTimers();
@@ -523,6 +525,8 @@ function handle(act, val) {
     return;
   }
   if (act === "cmp") {
+    cmpGuess = val;
+    draw();
     const q = compares[cmpIndex];
     if (val === cmpSign(q)) {
       if (!mathsDone[cmpIndex]) {
@@ -534,6 +538,7 @@ function handle(act, val) {
         if (cmpIndex >= compares.length - 1) finishMaths();
         else {
           cmpIndex += 1;
+          cmpGuess = "";
           draw();
         }
       });
