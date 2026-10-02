@@ -1,40 +1,39 @@
 import "./style.css";
 
 const words = [
-  "sniff",
-  "well",
-  "across",
-  "class",
-  "click",
-  "smack",
-  "kitchen",
-  "crutch",
-  "was",
-  "said",
+  "have",
+  "give",
+  "smells",
+  "jumps",
+  "catches",
+  "splashes",
+  "playground",
+  "bedroom",
+  "some",
+  "come",
 ];
 
 const compares = [
-  { left: 12, right: 35 },
-  { left: 8, right: 10 },
-  { left: 43, right: 27 },
-  { left: 88, right: 91 },
-  { left: 36, right: 41 },
-  { left: 77, right: 77 },
-  { left: 28, right: 92 },
-  { left: 21, right: 98 },
-  { left: 46, right: 32 },
-  { left: 58, right: 57 },
-  { left: 88, right: 56 },
-  { left: 96, right: 95 },
-  { left: 22, right: 22 },
-  { left: 16, right: 16 },
+  { left: 14, right: 41 },
+  { left: 9, right: 6 },
+  { left: 52, right: 52 },
+  { left: 33, right: 39 },
+  { left: 70, right: 17 },
+  { left: 25, right: 85 },
+  { left: 64, right: 46 },
+  { left: 19, right: 19 },
+  { left: 81, right: 18 },
+  { left: 47, right: 74 },
+  { left: 90, right: 99 },
+  { left: 31, right: 13 },
+  { left: 55, right: 55 },
+  { left: 26, right: 62 },
 ];
 
 const extras = "abcdefghijklmnopqrstuvwxyz";
 const app = document.querySelector("#app");
 const PASSWORD = "baxter";
 const HERO = "/austin-homework/hero.png";
-const HARVEST = "/austin-homework/Harvest%20Assembly.MP4";
 
 let index = 0;
 let covered = false;
@@ -215,14 +214,6 @@ function finishMaths() {
   if (mathsScore === compares.length) fireConfetti();
 }
 
-function startHarvest() {
-  const clip = document.querySelector("#harvest-clip");
-  if (!clip) return;
-  clip.muted = false;
-  const go = clip.play();
-  if (go && go.catch) go.catch(function () {});
-}
-
 function draw() {
   if (view === "login") {
     app.innerHTML = `
@@ -283,34 +274,11 @@ function draw() {
             ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}`
             : "Pick one"
         }</p>
-        <div class="big next" data-act="spell">Spellings</div>
-        <div class="big next-word" data-act="maths">Greater or less</div>
-        <div class="big next-word" data-act="harvest">Harvest Assembly Line</div>
+        <div class="big spell-btn" data-act="spell">Spellings</div>
+        <div class="big maths-btn" data-act="maths">Greater or less</div>
         <div class="big" data-act="logout">Log out</div>
       </main>
     `;
-    return;
-  }
-
-  if (view === "harvest") {
-    app.innerHTML = `
-      <main class="card">
-        <p class="week">Harvest</p>
-        <h1 class="word">Assembly line</h1>
-        <p class="progress">Watch and learn</p>
-        <video
-          id="harvest-clip"
-          class="clip"
-          controls
-          playsinline
-          autoplay
-          loop
-          src="${HARVEST}"
-        ></video>
-        <div class="big" data-act="home">Home</div>
-      </main>
-    `;
-    startHarvest();
     return;
   }
 
@@ -341,7 +309,6 @@ function draw() {
       <main class="card">
         <p class="week">Spellings · ${spellScore} pts</p>
         <p class="progress">Word ${index + 1} of ${words.length} · ${wordPoints(word)} pts</p>
-        <p class="rule">After a single vowel, z l f s double: zz ll ff ss</p>
         ${count > 0 ? `<div class="count">${count}</div>` : ""}
         <h1 class="word ${pulsing ? "pulse" : ""}">${
           covered ? "⭐".repeat(Math.min(word.length, 6)) : word
@@ -447,12 +414,6 @@ function handle(act, val) {
   }
   if (act === "home") {
     view = "home";
-    clearTimers();
-    draw();
-    return;
-  }
-  if (act === "harvest") {
-    view = "harvest";
     clearTimers();
     draw();
     return;

@@ -442,3 +442,12 @@ a.big[href="#home"] {
 .cmp-more {
   background: #f4d35e;
 }
+.spell-btn {
+  background: #f4d35e;
+  color: #0b1b4a;
+}
+
+.maths-btn {
+  background: #7dff9a;
+  color: #0b1b4a;
+}
