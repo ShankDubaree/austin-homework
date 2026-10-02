@@ -167,7 +167,7 @@ function draw() {
   if (view === "world") {
     const item = continents[worldOrder[worldIndex]];
     const opts = choicesFor(item.name);
-    app.innerHTML = `<main class="card"><p class="week">Continents · ${worldScore} pts</p><p class="progress">${worldIndex + 1} of ${continents.length}</p><p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${item.id}.png" alt="map" /><p id="result" class="${note ? "no" : ""}">${note}</p>${opts.map((name) => `<div class="big world-btn" data-act="world-pick" data-val="${name}">${name}</div>`).join("")}<div class="big" data-act="home">Home</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Continents · ${worldScore} pts</p><p class="progress">${worldIndex + 1} of ${continents.length}</p><p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${item.id}.jpg" alt="map" /><p id="result" class="${note ? "no" : ""}">${note}</p>${opts.map((name) => `<div class="big world-btn" data-act="world-pick" data-val="${name}">${name}</div>`).join("")}<div class="big" data-act="home">Home</div></main>`;
     return;
   }
   if (view === "grammar" && grammarKind === "menu") {

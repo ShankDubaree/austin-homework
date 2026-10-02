@@ -493,3 +493,8 @@ a.big[href="#home"] {
   font-size: 22px;
   margin: 12px 0;
 }
+.ask { font-size: 18px; color: #f4d35e; margin: 4px 0 8px; }
+.line { font-size: 32px; font-weight: 800; line-height: 1.25; margin: 12px 8px 16px; }
+.map { width: 100%; border-radius: 16px; margin: 8px 0 12px; background: #102a5c; }
+.spell-btn { background: #f4d35e; color: #0b1b4a; }
+.maths-btn { background: #7dff9a; color: #0b1b4a; }
