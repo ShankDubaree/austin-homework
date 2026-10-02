@@ -132,9 +132,7 @@ function finishGrammar() { lastKind = "grammar"; view = "result"; draw(); if (gr
 function nextGrammar(len) {
   flashWellDone(() => { note = ""; if (grammarIndex >= len - 1) finishGrammar(); else { grammarIndex += 1; draw(); } });
 }
-function backGrammar() {
-  return `<div class="big" data-act="g-menu">Back</div>`;
-}
+function backGrammar() { return `<div class="big" data-act="g-menu">Back</div>`; }
 function draw() {
   if (view === "login") {
     app.innerHTML = `<main class="card"><p class="week">Homework</p><h1 class="word">Who is it?</h1><div class="login-wrap"><div class="hero-btn" data-act="pick-austin"><img src="${HERO}" alt="Austin" /></div><div class="big next" data-act="pick-austin">Austin</div></div></main>`;
@@ -219,8 +217,7 @@ function handle(act, val) {
   }
   if (act === "grammar") { view = "grammar"; grammarKind = "menu"; grammarScore = 0; note = ""; clearTimers(); draw(); return; }
   if (act === "g-command" || act === "g-noun" || act === "g-suffix" || act === "g-join") {
-    grammarKind = act.slice(2);
-    grammarIndex = 0; grammarScore = 0; note = ""; draw(); return;
+    grammarKind = act.slice(2); grammarIndex = 0; grammarScore = 0; note = ""; draw(); return;
   }
   if (act === "hear") { speak(words[index]); return; }
   if (act === "letter") { if (!covered || listening || count > 0) return; typed += val; draw(); return; }
