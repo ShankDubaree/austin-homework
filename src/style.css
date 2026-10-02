@@ -480,3 +480,16 @@ a.big[href="#home"] {
   padding: 10px 14px;
   font-weight: 800;
 }
+.map {
+  width: 100%;
+  max-width: 340px;
+  height: 200px;
+  margin: 8px auto 12px;
+  display: block;
+}
+
+.fact,
+.line {
+  font-size: 22px;
+  margin: 12px 0;
+}
