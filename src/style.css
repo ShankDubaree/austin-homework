@@ -451,3 +451,32 @@ a.big[href="#home"] {
   background: #7dff9a;
   color: #0b1b4a;
 }
+.spell-btn { background: #f4d35e; color: #0b1b4a; }
+.maths-btn { background: #7dff9a; color: #0b1b4a; }
+.world-btn { background: #5aa7ff; color: #0b1b4a; }
+.grammar-btn { background: #c9a0ff; color: #0b1b4a; }
+.fact, .line { font-size: 22px; margin: 12px 0; }
+.blob.on {
+  margin: 8px auto 16px;
+  padding: 18px;
+  border-radius: 20px;
+  background: #f4d35e;
+  color: #0b1b4a;
+  font-size: 28px;
+  font-weight: 800;
+}
+.build-word {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  font-size: 28px;
+  margin: 16px 0;
+}
+.stem {
+  background: #fff;
+  color: #0b1b4a;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+}
