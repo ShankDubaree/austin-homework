@@ -1,4 +1,8 @@
 import "./style.css";
+import { LETTERS, FAMILIES, letterSvg } from "./handwriting/letters.js";
+import { scoreTrace } from "./handwriting/score.js";
+import * as pad from "./handwriting/pad.js";
+import * as hwProgress from "./handwriting/progress.js";
 
 const words = ["have","give","smells","jumps","catches","splashes","playground","bedroom","some","come"];
 const compares = [
@@ -56,6 +60,7 @@ let passGuess = "", loginError = "";
 let spellScore = 0, mathsScore = 0, worldScore = 0, grammarScore = 0;
 let spellDone = {}, mathsDone = {}, lastKind = "spell";
 let worldIndex = 0, worldOrder = [], grammarKind = "menu", grammarIndex = 0, note = "";
+let hwFam = FAMILIES[0].id, hwLetter = "c";
 
 function wordPoints(word) { return word.length; }
 function spellMax() { return words.reduce((sum, word) => sum + word.length, 0); }
@@ -79,10 +84,10 @@ function fireConfetti() {
     setTimeout(() => bit.remove(), 2500);
   }
 }
-function flashWellDone(done) {
+function flashWellDone(done, text) {
   const box = document.createElement("div");
   box.className = "flash-ok";
-  box.textContent = "Correct Well Done!";
+  box.textContent = text || "Correct Well Done!";
   document.body.appendChild(box);
   later(1400, () => { box.remove(); done(); });
 }
@@ -132,8 +137,66 @@ function finishGrammar() { lastKind = "grammar"; view = "result"; draw(); if (gr
 function nextGrammar(len) {
   flashWellDone(() => { note = ""; if (grammarIndex >= len - 1) finishGrammar(); else { grammarIndex += 1; draw(); } });
 }
+function hwFamily() { return FAMILIES.find((f) => f.id === hwFam) || FAMILIES[0]; }
+function hwStars(n) { return "★".repeat(n) + "☆".repeat(3 - n); }
+function hwNote(html) { const el = document.querySelector("#hw-note"); if (el) el.innerHTML = html; }
+function hwClearLabel(text) { const el = document.querySelector("#hw-clear"); if (el) el.textContent = text; }
+function hwWatch() {
+  clearTimers();
+  hwNote("Watch the pen");
+  hwClearLabel("Clear");
+  pad.watch();
+  if (hwProgress.voiceOn()) speak(LETTERS[hwLetter].hint);
+}
+function hwOpen(letter) { hwLetter = letter; pad.reset(letter); view = "hw-letter"; clearTimers(); window.scrollTo(0, 0); draw(); hwWatch(); }
+function hwCheck() {
+  if (pad.isWatching()) return;
+  const strokes = pad.strokes();
+  if (!strokes.length) { hwNote("Trace the letter first. Start at the green dot"); return; }
+  // Be a bit more forgiving when the letter is drawn small (phones).
+  const res = scoreTrace(hwLetter, strokes, { tolerance: Math.max(14, 20 / pad.scale()) });
+  hwProgress.saveResult(hwLetter, res.stars);
+  pad.finish();
+  const fam = hwFamily();
+  const best = document.querySelector("#hw-best");
+  if (best) best.textContent = `Letter ${fam.letters.indexOf(hwLetter) + 1} of ${fam.letters.length} · best ${hwStars(hwProgress.bestStars(hwLetter))}`;
+  hwClearLabel("Try again");
+  if (res.stars === 0) {
+    hwNote(`<span class="hw-stars">${hwStars(0)}</span><span class="no">Try again! ${res.tip}</span>`);
+    if (hwProgress.voiceOn()) speak("Try again. " + res.tip);
+    return;
+  }
+  const praise = ["", "Good try!", "Great writing!", "Brilliant!"][res.stars];
+  hwNote(`<span class="hw-stars">${hwStars(res.stars)}</span><span class="ok">${praise}</span>${res.stars < 3 ? `<span class="hw-tip">${res.tip}</span>` : ""}`);
+  if (hwProgress.voiceOn()) speak(res.stars === 3 ? "Brilliant, well done" : res.stars === 2 ? "Well done" : "Good try");
+  flashWellDone(() => {}, `${"⭐".repeat(res.stars)} ${praise}`);
+  if (res.stars === 3) fireConfetti();
+}
 function backGrammar() { return `<div class="big" data-act="g-menu">Back</div>`; }
 function draw() {
+  pad.unmount(); // the writing pad re-attaches below if we're on a letter; Austin's ink is kept
+  if (view === "hw-menu") {
+    app.innerHTML = `<main class="card"><p class="week">Handwriting</p><h1 class="word hw-title">Pick a family</h1>${FAMILIES.map((f) => {
+      const { got, max } = hwProgress.familyStars(f.letters);
+      return `<div class="big hw-fam" style="background:${f.color}" data-act="hw-fam" data-val="${f.id}"><span class="hw-fam-name">${f.name}</span><span class="hw-fam-letters">${f.letters.map((l) => letterSvg(l, 44)).join("")}</span><span class="hw-fam-stars">★ ${got} / ${max}</span></div>`;
+    }).join("")}<div class="big" data-act="home">Home</div></main>`;
+    return;
+  }
+  if (view === "hw-family") {
+    const fam = hwFamily();
+    app.innerHTML = `<main class="card"><p class="week">Handwriting</p><h1 class="word hw-title">${fam.name}</h1><p class="progress">Pick a letter</p><div class="hw-grid">${fam.letters.map((l) => `<div class="hw-tile" style="background:${fam.color}" data-act="hw-letter" data-val="${l}"><span class="hw-tile-letter">${letterSvg(l, 76)}</span><span class="hw-tile-stars">${hwStars(hwProgress.bestStars(l))}</span></div>`).join("")}</div><div class="big" data-act="hw-back">Back</div></main>`;
+    return;
+  }
+  if (view === "hw-letter") {
+    const fam = hwFamily();
+    const pos = fam.letters.indexOf(hwLetter);
+    app.innerHTML = `<main class="card hw-card"><div class="hw-voice" data-act="hw-voice" aria-label="Voice on or off">${hwProgress.voiceOn() ? "🔊" : "🔇"}</div><p class="week">${fam.name}</p><p class="progress" id="hw-best">Letter ${pos + 1} of ${fam.letters.length} · best ${hwStars(hwProgress.bestStars(hwLetter))}</p><canvas id="hw-pad" class="hw-pad" aria-label="Writing pad for the letter ${hwLetter}"></canvas><p id="hw-note" class="hw-note">Watch the pen</p><div class="row"><div class="big next-word" data-act="hw-watch">Watch</div><div class="big" id="hw-clear" data-act="hw-clear">Clear</div></div><div class="big next" data-act="hw-done">Done</div><div class="row"><div class="big" data-act="hw-back">Back</div><div class="big next-word" data-act="hw-next">${pos >= fam.letters.length - 1 ? "Finish" : "Next letter"}</div></div></main>`;
+    pad.mount(document.querySelector("#hw-pad"), hwLetter, {
+      onWatchEnd: () => hwNote("Your turn! Start at the green dot"),
+      onRestart: () => { hwNote("Your turn! Start at the green dot"); hwClearLabel("Clear"); },
+    });
+    return;
+  }
   if (view === "login") {
     app.innerHTML = `<main class="card"><p class="week">Homework</p><h1 class="word">Who is it?</h1><div class="login-wrap"><div class="hero-btn" data-act="pick-austin"><img src="${HERO}" alt="Austin" /></div><div class="big next" data-act="pick-austin">Austin</div></div></main>`;
     return;
@@ -144,7 +207,7 @@ function draw() {
   }
   if (view === "home") {
     const last = lastScore();
-    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Homework</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big" data-act="logout">Log out</div></main>`;
+    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Homework</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="logout">Log out</div></main>`;
     return;
   }
   if (view === "result") {
@@ -207,6 +270,28 @@ function handle(act, val) {
     draw(); return;
   }
   if (act === "home") { view = "home"; clearTimers(); draw(); return; }
+  if (act === "hw") { view = "hw-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "hw-fam") { hwFam = val; view = "hw-family"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "hw-letter") { hwOpen(val); return; }
+  if (act === "hw-watch") { hwWatch(); return; }
+  if (act === "hw-clear") { clearTimers(); pad.clear(); hwClearLabel("Clear"); hwNote("Your turn! Start at the green dot"); return; }
+  if (act === "hw-done") { hwCheck(); return; }
+  if (act === "hw-next") {
+    const fam = hwFamily();
+    const pos = fam.letters.indexOf(hwLetter);
+    if (pos >= fam.letters.length - 1) { view = "hw-family"; clearTimers(); draw(); }
+    else hwOpen(fam.letters[pos + 1]);
+    return;
+  }
+  if (act === "hw-back") { view = view === "hw-letter" ? "hw-family" : "hw-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "hw-voice") {
+    const on = !hwProgress.voiceOn();
+    hwProgress.setVoice(on);
+    if (!on) clearTimers();
+    const el = document.querySelector(".hw-voice");
+    if (el) el.textContent = on ? "🔊" : "🔇";
+    return;
+  }
   if (act === "g-menu") { view = "grammar"; grammarKind = "menu"; note = ""; draw(); return; }
   if (act === "spell") { view = "spell"; index = 0; spellScore = 0; spellDone = {}; startSequence(); return; }
   if (act === "maths") { view = "maths"; cmpIndex = 0; cmpGuess = ""; mathsScore = 0; mathsDone = {}; clearTimers(); draw(); return; }
