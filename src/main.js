@@ -217,7 +217,12 @@ function handle(act, val) {
   }
   if (act === "grammar") { view = "grammar"; grammarKind = "menu"; grammarScore = 0; note = ""; clearTimers(); draw(); return; }
   if (act === "g-command" || act === "g-noun" || act === "g-suffix" || act === "g-join") {
-    grammarKind = act.slice(2); grammarIndex = 0; grammarScore = 0; note = ""; draw(); return;
+    grammarKind = act.slice(2); grammarIndex = 0; grammarScore = 0; note = "";
+    // Mix up the answer buttons each time a section starts, so the right answer isn't always in the same place
+    suffixes.forEach((q) => { q.choices = shuffle(q.choices); });
+    joins.forEach((q) => { q.choices = shuffle(q.choices); });
+    nouns.forEach((q) => { q.options = shuffle(q.options); });
+    draw(); return;
   }
   if (act === "hear") { speak(words[index]); return; }
   if (act === "letter") { if (!covered || listening || count > 0) return; typed += val; draw(); return; }
