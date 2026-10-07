@@ -3,6 +3,10 @@ import { LETTERS, FAMILIES, letterSvg } from "./handwriting/letters.js";
 import { scoreTrace } from "./handwriting/score.js";
 import * as pad from "./handwriting/pad.js";
 import * as hwProgress from "./handwriting/progress.js";
+import { NIGHTS, SECTIONS, planNights, nightQuestions, nightSignature } from "./test/nights.js";
+import * as testDone from "./test/done.js";
+import * as sea from "./test/sea.js";
+import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
 const words = ["have","give","smells","jumps","catches","splashes","playground","bedroom","some","come"];
 const compares = [
@@ -61,6 +65,9 @@ let spellScore = 0, mathsScore = 0, worldScore = 0, grammarScore = 0;
 let spellDone = {}, mathsDone = {}, lastKind = "spell";
 let worldIndex = 0, worldOrder = [], grammarKind = "menu", grammarIndex = 0, note = "";
 let hwFam = FAMILIES[0].id, hwLetter = "c";
+// Nightly test state
+let tNight = 0, tQs = [], tPos = 0, tPhase = "q", tScore = 0, tMiss = 0, tTried = [], tWobble = "", tYay = "", tBusy = false, tFound = [], tBonus = null;
+let tShown = false, tResults = []; // tShown: answer is being shown after 3 wrong goes. tResults: "first" | "later" | "shown" per question
 
 function wordPoints(word) { return word.length; }
 function spellMax() { return words.reduce((sum, word) => sum + word.length, 0); }
@@ -95,8 +102,8 @@ function clearTimers() { timers.forEach((id) => clearTimeout(id)); timers = []; 
 function later(ms, fn) { timers.push(setTimeout(fn, ms)); }
 function speak(text) {
   pulsing = true;
-  if (view === "spell") draw();
-  later(850, () => { pulsing = false; if (view === "spell") draw(); });
+  if (spellOnScreen()) draw();
+  later(850, () => { pulsing = false; if (spellOnScreen()) draw(); });
   try { speechSynthesis.cancel(); const say = new SpeechSynthesisUtterance(text); say.rate = 0.75; speechSynthesis.speak(say); } catch (e) {}
 }
 function shuffle(list) { return list.map((item) => ({ item, sort: Math.random() })).sort((a, b) => a.sort - b.sort).map(({ item }) => item); }
@@ -114,8 +121,8 @@ function grammarMax() {
   if (grammarKind === "suffix") return suffixes.length;
   return joins.length;
 }
-function startSequence() {
-  const word = words[index];
+function spellOnScreen() { return view === "spell" || (view === "test" && tPhase === "q" && tQs[tPos] && tQs[tPos].kind === "spell"); }
+function startSequence(word = words[index]) {
   clearTimers(); covered = false; listening = true; typed = ""; tiles = makeTiles(word); count = 5; pulsing = false; draw();
   function tick() {
     later(1000, () => {
@@ -172,6 +179,318 @@ function hwCheck() {
   flashWellDone(() => {}, `${"⭐".repeat(res.stars)} ${praise}`);
   if (res.stars === 3) fireConfetti();
 }
+// ---------- Nightly tests (Monday to Thursday) ----------
+// The nights are worked out fresh from the lists at the top of this file every time,
+// so changing the weekly spellings changes the tests too (see src/test/nights.js).
+function testPlans() { return planNights({ spell: words, maths: compares, world: continents, command: commands, noun: nouns, suffix: suffixes, join: joins, letters: Object.keys(LETTERS) }); }
+const SECTION_ICON = { spell: "🔤", hw: "✏️", maths: "🔢", world: "🌍", grammar: "🔎" };
+const PRAISE = ["Correct Well Done!", "Brilliant! ⭐", "Super star! ⭐", "Well done! ⭐", "Amazing! ⭐"];
+function canTalk() { return typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined"; }
+// Read something out loud. Never waits for the voice, so if the tablet has no voices it just stays quiet.
+function say(text) {
+  if (!canTalk()) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.8;
+    const voices = speechSynthesis.getVoices() || [];
+    const gb = voices.find((v) => /en[-_]GB/i.test(v.lang)) || voices.find((v) => /^en/i.test(v.lang));
+    if (gb) u.voice = gb;
+    u.lang = gb ? gb.lang : "en-GB";
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+function tq() { return tQs[tPos]; }
+function sectionOf(q) { return SECTIONS.find((s) => s.id === q.section); }
+function tOptions(kind, item) {
+  if (kind === "world") return shuffle([item.name, ...shuffle(continents.filter((c) => c.name !== item.name)).slice(0, 2).map((c) => c.name)]);
+  if (kind === "noun") return shuffle(item.options.slice());
+  if (kind === "suffix" || kind === "join") return shuffle(item.choices.slice());
+  if (kind === "command") return ["yes", "no"];
+  if (kind === "maths") return ["<", "=", ">"];
+  return [];
+}
+function tAnswer(q) {
+  const it = q.item;
+  if (q.kind === "maths") return cmpSign(it);
+  if (q.kind === "world") return it.name;
+  if (q.kind === "command") return it.yes ? "yes" : "no";
+  return it.answer;
+}
+function tReadText(q) {
+  const it = q.item, opts = q.options;
+  const list = (xs) => xs.slice(0, -1).join(", ") + ", or " + xs[xs.length - 1];
+  if (q.kind === "maths") return `${it.left} and ${it.right}. Is ${it.left} less than, the same as, or more than ${it.right}?`;
+  if (q.kind === "world") return `Which continent is gold? ${list(opts)}?`;
+  if (q.kind === "command") return `Is this a command? ${it.text}`;
+  if (q.kind === "noun") return `Tap a noun. ${it.line} ${list(opts)}?`;
+  if (q.kind === "suffix") return `Which ending makes a real word? ${list(opts.map((e) => it.stem + e))}?`;
+  if (q.kind === "join") return `Which word joins these? ${it.line}, blank, ${it.rest} ${list(opts)}?`;
+  if (q.kind === "hw") return `Trace the letter ${it.letter}${it.word ? `, like in ${it.word}` : ""}. ${LETTERS[it.letter].hint}`;
+  return "";
+}
+function tStartQuestion(fresh = true) {
+  clearTimers();
+  if (fresh) { tMiss = 0; tTried = []; } // coming back from "Stop for now?" keeps the goes he has used
+  tWobble = ""; tYay = ""; tBusy = false; tShown = false;
+  const q = tq();
+  window.scrollTo(0, 0);
+  if (q.kind === "spell") startSequence(q.item); // same look, listen, cover, tap as the Spellings practice
+  else if (q.kind === "hw") { pad.reset(q.item.letter); draw(); tHwWatch(); } // same pad as Handwriting practice
+  else draw();
+}
+function tStartNight(n) {
+  const plan = testPlans()[n];
+  tNight = n; tPos = 0; tScore = 0; tFound = []; tBonus = null; tResults = [];
+  tQs = nightQuestions(plan).map((q) => ({ ...q, options: tOptions(q.kind, q.item) }));
+  view = "test";
+  if (!tQs.length) { tFinish(); return; }
+  tPhase = "q";
+  tStartQuestion();
+}
+function tFinish() {
+  clearTimers();
+  const plan = testPlans()[tNight];
+  tScore = nightScore(tResults); // right first time
+  testDone.markDone(tNight, nightSignature(plan), tScore, tQs.length);
+  const perfect = fullMarks(tResults, tQs.length);
+  // Full marks (every question right first time) earns the special Golden Puffer Fish,
+  // once for each time a night is finished with full marks.
+  tBonus = perfect ? sea.unlockSpecial() : null;
+  tPhase = "reward"; view = "test"; draw(); window.scrollTo(0, 0);
+  fireConfetti();
+  if (perfect) { say(`You did it, Austin! Full marks! You found ${sea.SPECIAL.name}!`); seaReveal(tBonus, true, () => {}); }
+  else say("You did it, Austin!");
+}
+function tNext() {
+  const prev = tq();
+  tPos += 1;
+  if (tPos >= tQs.length) { tFinish(); return; }
+  if (tq().section !== prev.section) { clearTimers(); tPhase = "break"; draw(); window.scrollTo(0, 0); say(`Great job! Next, ${sectionOf(tq()).name}.`); return; }
+  tStartQuestion();
+}
+function tRight(val) {
+  if (tBusy) return;
+  tBusy = true;
+  const go = rightGo(tMiss);
+  tResults[tPos] = go.firstTry ? "first" : "later";
+  if (go.firstTry) tScore += 1; // only right first time counts towards the score
+  if (tq().kind === "hw") { const el = document.querySelector("#hw-pad"); if (el) el.classList.add("yay"); }
+  else { tYay = val || "answer"; draw(); tYay = ""; }
+  if (!go.creature) { later(900, () => tNext()); return; }
+  const found = sea.unlockNext(); // one sea creature for every right answer (within 3 goes)
+  tFound.push(found.creature.id);
+  say(`Well done! ${found.isNew ? "You found" : "Another"} ${found.creature.name}`);
+  seaReveal(found, false, () => tNext());
+}
+// The fun bit: bubbles, and a sea creature swims in.
+function seaReveal(found, special, done) {
+  const c = found.creature;
+  const box = document.createElement("div");
+  box.className = "sea-reveal" + (special ? " special" : "");
+  let bubbles = "";
+  for (let i = 0; i < 14; i++) bubbles += `<span class="bubble" style="left:${(i * 37) % 100}%;animation-delay:${((i * 0.13) % 0.9).toFixed(2)}s;width:${10 + (i % 4) * 6}px;height:${10 + (i % 4) * 6}px"></span>`;
+  box.innerHTML = `${bubbles}<div class="sea-reveal-inner">${special ? `<div class="sea-badge">✨ SPECIAL ✨</div><div class="sea-praise">Full marks!</div>` : `<div class="sea-praise">${PRAISE[tPos % PRAISE.length]}</div>`}<div class="sea-swim">${sea.creatureArt(c, special ? 150 : 110)}</div><div class="sea-name">${special ? "Bonus! " : found.isNew ? "You found " : "Another "}${c.name}!</div></div>`;
+  document.body.appendChild(box);
+  if (special) { box.style.pointerEvents = "auto"; box.onclick = () => box.remove(); }
+  const ms = special ? 3200 : 1900;
+  setTimeout(() => box.remove(), ms); // always tidies itself away, even if he leaves the screen
+  later(ms, done);
+}
+function seaGrid(list, fresh = []) {
+  if (!list.length) return `<p class="progress">Get answers right to find sea creatures!</p>`;
+  return `<div class="sea-grid">${list.map(({ creature, count }) => `<div class="sea-cell ${creature.special ? "special" : ""} ${fresh.includes(creature.id) ? "new" : ""}">${sea.creatureArt(creature, 52)}<span class="sea-cell-name">${creature.name}</span>${count > 1 ? `<span class="sea-count">×${count}</span>` : ""}${creature.special ? `<span class="sea-tag">SPECIAL</span>` : fresh.includes(creature.id) ? `<span class="sea-tag new">NEW</span>` : ""}</div>`).join("")}</div>`;
+}
+function tHwNote(html) { const el = document.querySelector("#hw-note"); if (el) el.innerHTML = html; }
+function tHwWatch() {
+  pad.watch();
+  tHwNote("Watch the pen");
+  const clear = document.querySelector("#hw-clear"); if (clear) clear.textContent = "Clear";
+}
+function tHwCheck() {
+  const q = tq();
+  if (pad.isWatching() || tBusy) return;
+  const strokes = pad.strokes();
+  if (!strokes.length) { tHwNote("Trace the letter. Start at the green dot"); return; }
+  const res = scoreTrace(q.item.letter, strokes, { tolerance: Math.max(14, 20 / pad.scale()) });
+  hwProgress.saveResult(q.item.letter, res.stars); // counts towards his Handwriting practice stars too
+  pad.finish();
+  if (res.stars >= 1) {
+    tHwNote(`<span class="hw-stars">${hwStars(res.stars)}</span>`);
+    tRight("hw");
+    return;
+  }
+  // No stars yet: gentle wobble and a tip. After 3 goes, kindly show the letter and move on.
+  const go = wrongGo(tMiss);
+  tMiss = go.misses;
+  if (go.show) { tShowAnswer(); return; }
+  const el = document.querySelector("#hw-pad");
+  if (el) { el.classList.remove("wobble"); void el.offsetWidth; el.classList.add("wobble"); }
+  tHwNote(`<span class="t-hint">Nearly! Have another go 🙂</span><span class="hw-tip">${res.tip}</span>`);
+  const clear = document.querySelector("#hw-clear"); if (clear) clear.textContent = "Try again";
+  say("Nearly! Have another go. " + res.tip);
+}
+function tWrong(val) {
+  const go = wrongGo(tMiss);
+  tMiss = go.misses;
+  if (val && !tTried.includes(val)) tTried.push(val);
+  if (go.show) { tShowAnswer(); return; }
+  tWobble = val || "answer"; draw(); tWobble = "";
+}
+// After 3 wrong goes: show the answer gently (gold, no red, no creature), then a big Next button.
+function tShownMessage(q) {
+  const it = q.item;
+  const keep = " — let's keep going!";
+  if (q.kind === "spell") return `This one is spelt <b>${it}</b>${keep}`;
+  if (q.kind === "hw") return `Good trying! Watch how <b>${it.letter}</b> goes${keep}`;
+  if (q.kind === "maths") return `This one is <b>${it.left} ${cmpSign(it).replace("<", "&lt;").replace(">", "&gt;")} ${it.right}</b>${keep}`;
+  if (q.kind === "command") return it.yes ? `This one <b>is a command</b>${keep}` : `This one is <b>not a command</b>${keep}`;
+  if (q.kind === "suffix") return `This one is <b>${it.stem}${it.answer}</b>${keep}`;
+  return `This one is <b>${tAnswer(q)}</b>${keep}`;
+}
+function tShownSpeech(q) {
+  const it = q.item;
+  if (q.kind === "maths") return `${it.left} is ${{ "<": "less than", ">": "more than", "=": "the same as" }[cmpSign(it)]} ${it.right}. Let's keep going!`;
+  if (q.kind === "spell") return `This one is spelt ${it.split("").join(", ")}. ${it}. Let's keep going!`;
+  return tShownMessage(q).replace(/<[^>]+>/g, "").replace(" — ", ". ");
+}
+function tShowAnswer() {
+  const q = tq();
+  clearTimers();
+  tShown = true; tBusy = false;
+  tResults[tPos] = "shown";
+  if (q.kind === "spell") { covered = false; listening = false; count = 0; pulsing = false; typed = q.item; }
+  draw();
+  if (q.kind === "hw") { tHwNote(""); pad.watch(); } // the pen shows him how the letter goes
+  say(tShownSpeech(q));
+}
+function tDots() {
+  let html = "", lastSection = "";
+  tQs.forEach((q, i) => {
+    if (lastSection && q.section !== lastSection) html += `<span class="t-gap"></span>`;
+    lastSection = q.section;
+    const done = i < tPos;
+    const pop = tPhase === "break" && i === tPos - 1;
+    const shown = done && tResults[i] === "shown";
+    html += `<span class="t-dot ${done ? "done" : ""} ${shown ? "shown" : ""} ${i === tPos && tPhase === "q" ? "now" : ""} ${pop ? "pop" : ""}">${done && !shown ? "★" : ""}</span>`;
+  });
+  return `<div class="t-dots" aria-label="Question ${Math.min(tPos + 1, tQs.length)} of ${tQs.length}">${html}</div>`;
+}
+function tBtn(cls, val, label) {
+  if (tShown) return `<div class="big t-opt ${cls} ${val === tAnswer(tq()) ? "shown" : "dim"}">${label}</div>`;
+  const state = tYay === val ? "yay" : tTried.includes(val) ? (tWobble === val ? "tried wobble" : "tried") : "";
+  return `<div class="big t-opt ${cls} ${state}" data-act="t-pick" data-val="${val}">${label}</div>`;
+}
+function tQuestionHtml(q) {
+  const it = q.item;
+  if (q.kind === "spell" && tShown) {
+    return `<p class="ask">Spell the word</p><h1 class="word">${it}</h1><div class="answer shown">${it}</div>`;
+  }
+  if (q.kind === "spell") {
+    const canType = covered && !listening && count === 0;
+    const canCheck = canType && typed.length > 0;
+    return `<p class="ask">Spell the word</p>${count > 0 ? `<div class="count">${count}</div>` : ""}<h1 class="word ${pulsing ? "pulse" : ""}">${covered ? "⭐".repeat(Math.min(it.length, 6)) : it}</h1><div class="answer ${tWobble === "answer" ? "wobble" : ""} ${tYay === "answer" ? "yay" : ""}">${count > 0 ? "look at the word" : typed || (canType ? "tap the letters" : "watch and listen")}</div><div class="tiles">${tiles.map((letter) => `<div class="tile ${canType ? "" : "off"}" data-act="t-letter" data-val="${letter}">${letter}</div>`).join("")}</div><div class="big next ${canCheck ? "" : "off"}" data-act="t-check">Check</div><div class="row"><div class="big next-word" data-act="t-hear">Hear it</div><div class="big ${canType && typed ? "" : "off"}" data-act="t-rub">Rub out</div></div><div class="big" data-act="t-look">Look again</div>`;
+  }
+  if (q.kind === "hw") {
+    const w = it.word ? it.word.replace(it.letter, `<b class="t-hw-letter">${it.letter}</b>`) : "";
+    return `<p class="ask">Trace the letter</p>${w ? `<p class="t-hw-word">${it.letter} as in ${w}</p>` : ""}<canvas id="hw-pad" class="hw-pad t-pad" aria-label="Writing pad for the letter ${it.letter}"></canvas><p id="hw-note" class="hw-note">${tShown ? "" : "Watch the pen"}</p>${tShown ? "" : `<div class="row"><div class="big next-word" data-act="t-hw-watch">Watch</div><div class="big" id="hw-clear" data-act="t-hw-clear">Clear</div></div><div class="big next" data-act="t-hw-done">Done</div>`}`;
+  }
+  if (q.kind === "maths") {
+    return `<p class="ask">Which sign?</p><div class="compare"><span class="cmp-num">${it.left}</span><span class="cmp-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${tShown ? cmpSign(it).replace("<", "&lt;").replace(">", "&gt;") : tYay ? tYay.replace("<", "&lt;").replace(">", "&gt;") : "?"}</span><span class="cmp-num">${it.right}</span></div><p class="hint">The open side eats the bigger number</p><div class="row3 t-row3">${[["<", "cmp-less", "less"], ["=", "cmp-same", "same"], [">", "cmp-more", "more"]].map(([v, cls, word]) => {
+      if (tShown) return `<div class="cmp-btn ${cls} ${v === cmpSign(it) ? "shown" : "dim"}"><span class="sign">${v.replace("<", "&lt;").replace(">", "&gt;")}</span><span>${word}</span></div>`;
+      const state = tYay === v ? "yay" : tTried.includes(v) ? (tWobble === v ? "tried wobble" : "tried") : "";
+      return `<div class="cmp-btn ${cls} ${state}" data-act="t-pick" data-val="${v.replace("<", "&lt;").replace(">", "&gt;")}"><span class="sign">${v.replace("<", "&lt;").replace(">", "&gt;")}</span><span>${word}</span></div>`;
+    }).join("")}</div>`;
+  }
+  if (q.kind === "world") return `<p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${it.id}.jpg" alt="map" /><div class="t-opts">${q.options.map((name) => tBtn("world-btn", name, name)).join("")}</div>`;
+  if (q.kind === "command") return `<p class="ask">Is this a command?</p><div class="line">${it.text}</div><p class="hint">A command tells you to do something</p><div class="t-opts">${tBtn("spell-btn", "yes", "Command")}${tBtn("world-btn", "no", "Not a command")}</div>`;
+  if (q.kind === "noun") return `<p class="ask">Tap a noun</p><div class="line">${it.line}</div><p class="hint">A noun is a person, place or thing</p><div class="t-opts">${q.options.map((w) => tBtn("grammar-btn", w, w)).join("")}</div>`;
+  if (q.kind === "suffix") return `<p class="ask">Which ending makes a real word?</p><div class="line">${it.stem} + ?</div><div class="t-opts">${q.options.map((end) => tBtn("grammar-btn", end, it.stem + end)).join("")}</div>`;
+  return `<p class="ask">Which word joins these?</p><div class="line">${it.line} ___ ${it.rest}</div><div class="t-opts">${q.options.map((w) => tBtn("grammar-btn", w, w)).join("")}</div>`;
+}
+function drawTest() {
+  if (view === "test-menu") {
+    const plans = testPlans();
+    const today = new Date().getDay() - 1; // Monday = 0
+    app.innerHTML = `<main class="card"><p class="week">Test</p><h1 class="word">Pick a night</h1><div class="t-nights">${plans.map((plan, n) => {
+      const res = testDone.nightResult(n, nightSignature(plan));
+      return `<div class="big t-night t-night-${n} ${res ? "is-done" : ""}" data-act="t-night" data-val="${n}"><span class="t-night-name">${NIGHTS[n]}</span>${res ? `<span class="t-tick">✔</span><span class="t-night-sub">${res.score} / ${res.max} · tap to do again</span>` : n === today ? `<span class="t-night-sub">Tonight</span>` : ""}</div>`;
+    }).join("")}</div><div class="big t-sea-btn" data-act="t-sea">🐠 My sea creatures (${sea.collection().length})</div><div class="big" data-act="home">Back</div></main>`;
+    return;
+  }
+  if (view === "sea") {
+    const all = sea.collection();
+    app.innerHTML = `<main class="card"><p class="week">Test</p><h1 class="word t-sea-h1">My sea creatures</h1><p class="progress">${all.length} of ${sea.CREATURES.length + 1} found</p>${seaGrid(all)}<div class="big" data-act="test-menu">Back</div></main>`;
+    return;
+  }
+  if (tPhase === "reward") {
+    const all = sea.collection();
+    app.innerHTML = `<main class="card t-card"><div class="login-wrap"><div class="hero-btn t-hero"><img src="${HERO}" alt="Austin" /></div></div><h1 class="word t-reward">You did it, Austin!</h1><p class="week">${NIGHTS[tNight]} test done ✔</p><div class="score-big">${tScore} / ${tQs.length}</div><p class="t-score-words">${tScore === tQs.length ? "Full marks! All right first time!" : "right first time"}</p><div class="stars">${stars(tScore, tQs.length)}</div>${tBonus ? `<div class="t-bonus"><span class="sea-tag">SPECIAL</span>${sea.creatureArt(sea.SPECIAL, 96)}<span>Bonus: ${sea.SPECIAL.name}!</span></div>` : ""}<div class="big next" data-act="test-menu">Back to tests</div><div class="big next-word" data-act="home">Home</div><h2 class="t-sea-title">Your sea creatures (${all.length})</h2><p class="progress">You found ${tFound.length} tonight</p>${seaGrid(all, tFound)}</main>`;
+    return;
+  }
+  if (tPhase === "quit") {
+    app.innerHTML = `<main class="card t-card">${tDots()}<h1 class="word t-break-title">Stop for now?</h1><div class="big next" data-act="t-resume">Keep going</div><div class="big" data-act="test-menu">Stop</div></main>`;
+    return;
+  }
+  if (tPhase === "break") {
+    const done = SECTIONS.find((s) => s.id === tQs[tPos - 1].section);
+    const next = sectionOf(tq());
+    app.innerHTML = `<main class="card t-card">${tDots()}<div class="t-break-star">⭐</div><h1 class="word t-break-title">${done.name} done!</h1><p class="t-break-tip">Stretch up high! 🙌</p><p class="t-next">Next: ${SECTION_ICON[next.id]} ${next.name}</p><div class="big next t-go" data-act="t-go">Go!</div></main>`;
+    return;
+  }
+  const q = tq();
+  const speaker = q.kind !== "spell" && canTalk() ? `<div class="t-corner t-say" data-act="t-say" aria-label="Read it to me">🔊</div>` : `<span class="t-corner-space"></span>`;
+  const hint = q.kind === "hw" || !tMiss ? "" : q.kind === "spell" ? "Nearly! Listen and try again 🙂" : "Nearly! Have another go 🙂";
+  app.innerHTML = `<main class="card t-card"><div class="t-top"><div class="t-corner t-x" data-act="t-quit" aria-label="Stop">✕</div>${tDots()}${speaker}</div><p class="t-section">${SECTION_ICON[q.section]} ${sectionOf(q).name}</p>${tQuestionHtml(q)}${tShown ? `<div class="t-shown">${tShownMessage(q)}</div><div class="big next t-next-btn" data-act="t-next">Next ➜</div>` : q.kind === "hw" ? "" : `<p class="t-hint">${hint}</p>`}</main>`;
+  if (q.kind === "hw") {
+    pad.mount(document.querySelector("#hw-pad"), q.item.letter, {
+      onWatchEnd: () => { if (!tShown) tHwNote("Your turn! Start at the green dot"); },
+      onRestart: () => { tHwNote("Your turn! Start at the green dot"); const c = document.querySelector("#hw-clear"); if (c) c.textContent = "Clear"; },
+    });
+  }
+}
+function handleTest(act, val) {
+  if (act === "test-menu") { view = "test-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "t-night") { tStartNight(Number(val)); return; }
+  if (act === "t-sea") { view = "sea"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "t-go") { tPhase = "q"; tStartQuestion(); return; }
+  if (act === "t-quit") { if (tBusy) return; clearTimers(); tPhase = "quit"; draw(); return; }
+  if (act === "t-resume") { tPhase = "q"; if (tResults[tPos] === "shown") tShowAnswer(); else tStartQuestion(false); return; }
+  const q = tq();
+  if (!q || tPhase !== "q") return;
+  if (act === "t-say") {
+    say(tShown ? tShownSpeech(q) : tReadText(q));
+    const el = document.querySelector(".t-say");
+    if (el) { el.classList.remove("talking"); void el.offsetWidth; el.classList.add("talking"); }
+    return;
+  }
+  if (tShown) { if (act === "t-next") { tShown = false; tNext(); } return; }
+  if (act === "t-pick") {
+    if (tBusy || q.kind === "spell") return;
+    if (val === tAnswer(q)) tRight(val); else tWrong(val);
+    return;
+  }
+  if (q.kind === "hw") {
+    if (tBusy) return;
+    if (act === "t-hw-watch") tHwWatch();
+    if (act === "t-hw-clear") { pad.clear(); tHwNote("Your turn! Start at the green dot"); const c = document.querySelector("#hw-clear"); if (c) c.textContent = "Clear"; }
+    if (act === "t-hw-done") tHwCheck();
+    return;
+  }
+  if (q.kind !== "spell") return;
+  if (act === "t-hear") { speak(q.item); return; }
+  if (act === "t-look") { if (!tBusy) startSequence(q.item); return; }
+  if (!covered || listening || count > 0 || tBusy) return;
+  if (act === "t-letter") { typed += val; draw(); return; }
+  if (act === "t-rub") { typed = typed.slice(0, -1); draw(); return; }
+  if (act === "t-check") {
+    if (!typed) return;
+    if (typed === q.item) { tRight("answer"); return; }
+    typed = "";
+    if (!wrongGo(tMiss).show) speak(q.item); // say the word again, then a gentle wobble
+    tWrong("answer");
+  }
+}
 function backGrammar() { return `<div class="big" data-act="g-menu">Back</div>`; }
 function draw() {
   pad.unmount(); // the writing pad re-attaches below if we're on a letter; Austin's ink is kept
@@ -179,7 +498,7 @@ function draw() {
     app.innerHTML = `<main class="card"><p class="week">Handwriting</p><h1 class="word hw-title">Pick a family</h1>${FAMILIES.map((f) => {
       const { got, max } = hwProgress.familyStars(f.letters);
       return `<div class="big hw-fam" style="background:${f.color}" data-act="hw-fam" data-val="${f.id}"><span class="hw-fam-name">${f.name}</span><span class="hw-fam-letters">${f.letters.map((l) => letterSvg(l, 44)).join("")}</span><span class="hw-fam-stars">★ ${got} / ${max}</span></div>`;
-    }).join("")}<div class="big" data-act="home">Home</div></main>`;
+    }).join("")}<div class="big" data-act="practice">Back</div></main>`;
     return;
   }
   if (view === "hw-family") {
@@ -197,6 +516,7 @@ function draw() {
     });
     return;
   }
+  if (view === "test-menu" || view === "test" || view === "sea") { drawTest(); return; }
   if (view === "login") {
     app.innerHTML = `<main class="card"><p class="week">Homework</p><h1 class="word">Who is it?</h1><div class="login-wrap"><div class="hero-btn" data-act="pick-austin"><img src="${HERO}" alt="Austin" /></div><div class="big next" data-act="pick-austin">Austin</div></div></main>`;
     return;
@@ -206,8 +526,12 @@ function draw() {
     return;
   }
   if (view === "home") {
+    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Homework</h1><div class="big mode-btn practice-btn" data-act="practice"><span class="mode-icon">📚</span>Practice</div><div class="big mode-btn test-btn" data-act="test-menu"><span class="mode-icon">⭐</span>Test</div><div class="big" data-act="logout">Log out</div></main>`;
+    return;
+  }
+  if (view === "practice") {
     const last = lastScore();
-    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Homework</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="logout">Log out</div></main>`;
+    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
     return;
   }
   if (view === "result") {
@@ -215,24 +539,24 @@ function draw() {
     if (lastKind === "maths") { got = mathsScore; max = compares.length; }
     if (lastKind === "world") { got = worldScore; max = continents.length; }
     if (lastKind === "grammar") { got = grammarScore; max = grammarMax(); }
-    app.innerHTML = `<main class="card"><p class="week">Hero score</p><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><div class="score-big">${got} / ${max}</div><div class="stars">${stars(got, max)}</div><div class="big next" data-act="home">Home</div><div class="big next-word" data-act="${lastKind === "grammar" ? "grammar" : lastKind}">Play again</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Hero score</p><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><div class="score-big">${got} / ${max}</div><div class="stars">${stars(got, max)}</div><div class="big next" data-act="practice">Back</div><div class="big next-word" data-act="${lastKind === "grammar" ? "grammar" : lastKind}">Play again</div></main>`;
     return;
   }
   if (view === "spell") {
     const word = words[index];
     const canType = covered && !listening && count === 0;
     const canCheck = canType && typed.length > 0;
-    app.innerHTML = `<main class="card"><p class="week">Spellings · ${spellScore} pts</p><p class="progress">Word ${index + 1} of ${words.length} · ${wordPoints(word)} pts</p>${count > 0 ? `<div class="count">${count}</div>` : ""}<h1 class="word ${pulsing ? "pulse" : ""}">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1><div class="answer">${count > 0 ? "look at the word" : typed || (canType ? "tap the letters" : "watch and listen")}</div><p id="result"></p><div class="tiles">${tiles.map((letter) => `<div class="tile ${canType ? "" : "off"}" data-act="letter" data-val="${letter}">${letter}</div>`).join("")}</div><div class="big next-word" data-act="hear">Hear the word</div><div class="big next ${canCheck ? "" : "off"}" data-act="check-spell">Check</div><div class="row"><div class="big" data-act="again">Again</div><div class="big next-word" data-act="next-word">Next word</div></div><div class="big" data-act="home">Home</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Spellings · ${spellScore} pts</p><p class="progress">Word ${index + 1} of ${words.length} · ${wordPoints(word)} pts</p>${count > 0 ? `<div class="count">${count}</div>` : ""}<h1 class="word ${pulsing ? "pulse" : ""}">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1><div class="answer">${count > 0 ? "look at the word" : typed || (canType ? "tap the letters" : "watch and listen")}</div><p id="result"></p><div class="tiles">${tiles.map((letter) => `<div class="tile ${canType ? "" : "off"}" data-act="letter" data-val="${letter}">${letter}</div>`).join("")}</div><div class="big next-word" data-act="hear">Hear the word</div><div class="big next ${canCheck ? "" : "off"}" data-act="check-spell">Check</div><div class="row"><div class="big" data-act="again">Again</div><div class="big next-word" data-act="next-word">Next word</div></div><div class="big" data-act="practice">Back</div></main>`;
     return;
   }
   if (view === "world") {
     const item = continents[worldOrder[worldIndex]];
     const opts = choicesFor(item.name);
-    app.innerHTML = `<main class="card"><p class="week">Continents · ${worldScore} pts</p><p class="progress">${worldIndex + 1} of ${continents.length}</p><p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${item.id}.jpg" alt="map" /><p id="result" class="${note ? "no" : ""}">${note}</p>${opts.map((name) => `<div class="big world-btn" data-act="world-pick" data-val="${name}">${name}</div>`).join("")}<div class="big" data-act="home">Home</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Continents · ${worldScore} pts</p><p class="progress">${worldIndex + 1} of ${continents.length}</p><p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${item.id}.jpg" alt="map" /><p id="result" class="${note ? "no" : ""}">${note}</p>${opts.map((name) => `<div class="big world-btn" data-act="world-pick" data-val="${name}">${name}</div>`).join("")}<div class="big" data-act="practice">Back</div></main>`;
     return;
   }
   if (view === "grammar" && grammarKind === "menu") {
-    app.innerHTML = `<main class="card"><p class="week">Grammar hunt</p><h1 class="word">Pick one</h1><div class="big grammar-btn" data-act="g-command">Commands</div><div class="big grammar-btn" data-act="g-noun">Nouns</div><div class="big grammar-btn" data-act="g-suffix">Suffixes</div><div class="big grammar-btn" data-act="g-join">Joining words</div><div class="big" data-act="home">Home</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Grammar hunt</p><h1 class="word">Pick one</h1><div class="big grammar-btn" data-act="g-command">Commands</div><div class="big grammar-btn" data-act="g-noun">Nouns</div><div class="big grammar-btn" data-act="g-suffix">Suffixes</div><div class="big grammar-btn" data-act="g-join">Joining words</div><div class="big" data-act="practice">Back</div></main>`;
     return;
   }
   if (view === "grammar" && grammarKind === "command") {
@@ -256,7 +580,7 @@ function draw() {
     return;
   }
   const q = compares[cmpIndex];
-  app.innerHTML = `<main class="card"><p class="week">Which is bigger?</p><p class="progress">${cmpIndex + 1} of ${compares.length} · ${mathsScore} pts</p><div class="compare"><span class="cmp-num">${q.left}</span><span class="cmp-box">${cmpGuess || "?"}</span><span class="cmp-num">${q.right}</span></div><p class="hint">The open side eats the bigger number</p><p id="result"></p><div class="row3"><div class="cmp-btn cmp-less" data-act="cmp" data-val="&lt;"><span class="sign">&lt;</span><span>less</span></div><div class="cmp-btn cmp-same" data-act="cmp" data-val="="><span class="sign">=</span><span>same</span></div><div class="cmp-btn cmp-more" data-act="cmp" data-val="&gt;"><span class="sign">&gt;</span><span>more</span></div></div><div class="big" data-act="home">Home</div></main>`;
+  app.innerHTML = `<main class="card"><p class="week">Which is bigger?</p><p class="progress">${cmpIndex + 1} of ${compares.length} · ${mathsScore} pts</p><div class="compare"><span class="cmp-num">${q.left}</span><span class="cmp-box">${cmpGuess || "?"}</span><span class="cmp-num">${q.right}</span></div><p class="hint">The open side eats the bigger number</p><p id="result"></p><div class="row3"><div class="cmp-btn cmp-less" data-act="cmp" data-val="&lt;"><span class="sign">&lt;</span><span>less</span></div><div class="cmp-btn cmp-same" data-act="cmp" data-val="="><span class="sign">=</span><span>same</span></div><div class="cmp-btn cmp-more" data-act="cmp" data-val="&gt;"><span class="sign">&gt;</span><span>more</span></div></div><div class="big" data-act="practice">Back</div></main>`;
 }
 function handle(act, val) {
   if (!act) return;
@@ -270,6 +594,8 @@ function handle(act, val) {
     draw(); return;
   }
   if (act === "home") { view = "home"; clearTimers(); draw(); return; }
+  if (act === "practice") { view = "practice"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act.startsWith("t-") || act === "test-menu") { handleTest(act, val); return; }
   if (act === "hw") { view = "hw-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
   if (act === "hw-fam") { hwFam = val; view = "hw-family"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
   if (act === "hw-letter") { hwOpen(val); return; }
