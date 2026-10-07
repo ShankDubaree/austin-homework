@@ -6,6 +6,7 @@ import * as hwProgress from "./handwriting/progress.js";
 import { NIGHTS, SECTIONS, planNights, nightQuestions, nightSignature } from "./test/nights.js";
 import * as testDone from "./test/done.js";
 import * as sea from "./test/sea.js";
+import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
 const words = ["have","give","smells","jumps","catches","splashes","playground","bedroom","some","come"];
 const compares = [
@@ -66,6 +67,7 @@ let worldIndex = 0, worldOrder = [], grammarKind = "menu", grammarIndex = 0, not
 let hwFam = FAMILIES[0].id, hwLetter = "c";
 // Nightly test state
 let tNight = 0, tQs = [], tPos = 0, tPhase = "q", tScore = 0, tMiss = 0, tTried = [], tWobble = "", tYay = "", tBusy = false, tFound = [], tBonus = null;
+let tShown = false, tResults = []; // tShown: answer is being shown after 3 wrong goes. tResults: "first" | "later" | "shown" per question
 
 function wordPoints(word) { return word.length; }
 function spellMax() { return words.reduce((sum, word) => sum + word.length, 0); }
@@ -227,9 +229,10 @@ function tReadText(q) {
   if (q.kind === "hw") return `Trace the letter ${it.letter}${it.word ? `, like in ${it.word}` : ""}. ${LETTERS[it.letter].hint}`;
   return "";
 }
-function tStartQuestion() {
+function tStartQuestion(fresh = true) {
   clearTimers();
-  tMiss = 0; tTried = []; tWobble = ""; tYay = ""; tBusy = false;
+  if (fresh) { tMiss = 0; tTried = []; } // coming back from "Stop for now?" keeps the goes he has used
+  tWobble = ""; tYay = ""; tBusy = false; tShown = false;
   const q = tq();
   window.scrollTo(0, 0);
   if (q.kind === "spell") startSequence(q.item); // same look, listen, cover, tap as the Spellings practice
@@ -238,7 +241,7 @@ function tStartQuestion() {
 }
 function tStartNight(n) {
   const plan = testPlans()[n];
-  tNight = n; tPos = 0; tScore = 0; tFound = []; tBonus = null;
+  tNight = n; tPos = 0; tScore = 0; tFound = []; tBonus = null; tResults = [];
   tQs = nightQuestions(plan).map((q) => ({ ...q, options: tOptions(q.kind, q.item) }));
   view = "test";
   if (!tQs.length) { tFinish(); return; }
@@ -248,8 +251,9 @@ function tStartNight(n) {
 function tFinish() {
   clearTimers();
   const plan = testPlans()[tNight];
+  tScore = nightScore(tResults); // right first time
   testDone.markDone(tNight, nightSignature(plan), tScore, tQs.length);
-  const perfect = tQs.length > 0 && tScore === tQs.length;
+  const perfect = fullMarks(tResults, tQs.length);
   // Full marks (every question right first time) earns the special Golden Puffer Fish,
   // once for each time a night is finished with full marks.
   tBonus = perfect ? sea.unlockSpecial() : null;
@@ -268,10 +272,13 @@ function tNext() {
 function tRight(val) {
   if (tBusy) return;
   tBusy = true;
-  if (tMiss === 0) tScore += 1; // first try counts towards the score
+  const go = rightGo(tMiss);
+  tResults[tPos] = go.firstTry ? "first" : "later";
+  if (go.firstTry) tScore += 1; // only right first time counts towards the score
   if (tq().kind === "hw") { const el = document.querySelector("#hw-pad"); if (el) el.classList.add("yay"); }
   else { tYay = val || "answer"; draw(); tYay = ""; }
-  const found = sea.unlockNext(); // one sea creature for every right answer
+  if (!go.creature) { later(900, () => tNext()); return; }
+  const found = sea.unlockNext(); // one sea creature for every right answer (within 3 goes)
   tFound.push(found.creature.id);
   say(`Well done! ${found.isNew ? "You found" : "Another"} ${found.creature.name}`);
   seaReveal(found, false, () => tNext());
@@ -313,8 +320,10 @@ function tHwCheck() {
     tRight("hw");
     return;
   }
-  // No stars yet: gentle wobble, a tip, and he tries again (as many times as he likes)
-  tMiss += 1;
+  // No stars yet: gentle wobble and a tip. After 3 goes, kindly show the letter and move on.
+  const go = wrongGo(tMiss);
+  tMiss = go.misses;
+  if (go.show) { tShowAnswer(); return; }
   const el = document.querySelector("#hw-pad");
   if (el) { el.classList.remove("wobble"); void el.offsetWidth; el.classList.add("wobble"); }
   tHwNote(`<span class="t-hint">Nearly! Have another go 🙂</span><span class="hw-tip">${res.tip}</span>`);
@@ -322,9 +331,38 @@ function tHwCheck() {
   say("Nearly! Have another go. " + res.tip);
 }
 function tWrong(val) {
-  tMiss += 1;
+  const go = wrongGo(tMiss);
+  tMiss = go.misses;
   if (val && !tTried.includes(val)) tTried.push(val);
+  if (go.show) { tShowAnswer(); return; }
   tWobble = val || "answer"; draw(); tWobble = "";
+}
+// After 3 wrong goes: show the answer gently (gold, no red, no creature), then a big Next button.
+function tShownMessage(q) {
+  const it = q.item;
+  const keep = " — let's keep going!";
+  if (q.kind === "spell") return `This one is spelt <b>${it}</b>${keep}`;
+  if (q.kind === "hw") return `Good trying! Watch how <b>${it.letter}</b> goes${keep}`;
+  if (q.kind === "maths") return `This one is <b>${it.left} ${cmpSign(it).replace("<", "&lt;").replace(">", "&gt;")} ${it.right}</b>${keep}`;
+  if (q.kind === "command") return it.yes ? `This one <b>is a command</b>${keep}` : `This one is <b>not a command</b>${keep}`;
+  if (q.kind === "suffix") return `This one is <b>${it.stem}${it.answer}</b>${keep}`;
+  return `This one is <b>${tAnswer(q)}</b>${keep}`;
+}
+function tShownSpeech(q) {
+  const it = q.item;
+  if (q.kind === "maths") return `${it.left} is ${{ "<": "less than", ">": "more than", "=": "the same as" }[cmpSign(it)]} ${it.right}. Let's keep going!`;
+  if (q.kind === "spell") return `This one is spelt ${it.split("").join(", ")}. ${it}. Let's keep going!`;
+  return tShownMessage(q).replace(/<[^>]+>/g, "").replace(" — ", ". ");
+}
+function tShowAnswer() {
+  const q = tq();
+  clearTimers();
+  tShown = true; tBusy = false;
+  tResults[tPos] = "shown";
+  if (q.kind === "spell") { covered = false; listening = false; count = 0; pulsing = false; typed = q.item; }
+  draw();
+  if (q.kind === "hw") { tHwNote(""); pad.watch(); } // the pen shows him how the letter goes
+  say(tShownSpeech(q));
 }
 function tDots() {
   let html = "", lastSection = "";
@@ -333,16 +371,21 @@ function tDots() {
     lastSection = q.section;
     const done = i < tPos;
     const pop = tPhase === "break" && i === tPos - 1;
-    html += `<span class="t-dot ${done ? "done" : ""} ${i === tPos && tPhase === "q" ? "now" : ""} ${pop ? "pop" : ""}">${done ? "★" : ""}</span>`;
+    const shown = done && tResults[i] === "shown";
+    html += `<span class="t-dot ${done ? "done" : ""} ${shown ? "shown" : ""} ${i === tPos && tPhase === "q" ? "now" : ""} ${pop ? "pop" : ""}">${done && !shown ? "★" : ""}</span>`;
   });
   return `<div class="t-dots" aria-label="Question ${Math.min(tPos + 1, tQs.length)} of ${tQs.length}">${html}</div>`;
 }
 function tBtn(cls, val, label) {
+  if (tShown) return `<div class="big t-opt ${cls} ${val === tAnswer(tq()) ? "shown" : "dim"}">${label}</div>`;
   const state = tYay === val ? "yay" : tTried.includes(val) ? (tWobble === val ? "tried wobble" : "tried") : "";
   return `<div class="big t-opt ${cls} ${state}" data-act="t-pick" data-val="${val}">${label}</div>`;
 }
 function tQuestionHtml(q) {
   const it = q.item;
+  if (q.kind === "spell" && tShown) {
+    return `<p class="ask">Spell the word</p><h1 class="word">${it}</h1><div class="answer shown">${it}</div>`;
+  }
   if (q.kind === "spell") {
     const canType = covered && !listening && count === 0;
     const canCheck = canType && typed.length > 0;
@@ -350,10 +393,11 @@ function tQuestionHtml(q) {
   }
   if (q.kind === "hw") {
     const w = it.word ? it.word.replace(it.letter, `<b class="t-hw-letter">${it.letter}</b>`) : "";
-    return `<p class="ask">Trace the letter</p>${w ? `<p class="t-hw-word">${it.letter} as in ${w}</p>` : ""}<canvas id="hw-pad" class="hw-pad t-pad" aria-label="Writing pad for the letter ${it.letter}"></canvas><p id="hw-note" class="hw-note">Watch the pen</p><div class="row"><div class="big next-word" data-act="t-hw-watch">Watch</div><div class="big" id="hw-clear" data-act="t-hw-clear">Clear</div></div><div class="big next" data-act="t-hw-done">Done</div>`;
+    return `<p class="ask">Trace the letter</p>${w ? `<p class="t-hw-word">${it.letter} as in ${w}</p>` : ""}<canvas id="hw-pad" class="hw-pad t-pad" aria-label="Writing pad for the letter ${it.letter}"></canvas><p id="hw-note" class="hw-note">${tShown ? "" : "Watch the pen"}</p>${tShown ? "" : `<div class="row"><div class="big next-word" data-act="t-hw-watch">Watch</div><div class="big" id="hw-clear" data-act="t-hw-clear">Clear</div></div><div class="big next" data-act="t-hw-done">Done</div>`}`;
   }
   if (q.kind === "maths") {
-    return `<p class="ask">Which sign?</p><div class="compare"><span class="cmp-num">${it.left}</span><span class="cmp-box ${tYay ? "yay" : ""}">${tYay ? tYay.replace("<", "&lt;").replace(">", "&gt;") : "?"}</span><span class="cmp-num">${it.right}</span></div><p class="hint">The open side eats the bigger number</p><div class="row3 t-row3">${[["<", "cmp-less", "less"], ["=", "cmp-same", "same"], [">", "cmp-more", "more"]].map(([v, cls, word]) => {
+    return `<p class="ask">Which sign?</p><div class="compare"><span class="cmp-num">${it.left}</span><span class="cmp-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${tShown ? cmpSign(it).replace("<", "&lt;").replace(">", "&gt;") : tYay ? tYay.replace("<", "&lt;").replace(">", "&gt;") : "?"}</span><span class="cmp-num">${it.right}</span></div><p class="hint">The open side eats the bigger number</p><div class="row3 t-row3">${[["<", "cmp-less", "less"], ["=", "cmp-same", "same"], [">", "cmp-more", "more"]].map(([v, cls, word]) => {
+      if (tShown) return `<div class="cmp-btn ${cls} ${v === cmpSign(it) ? "shown" : "dim"}"><span class="sign">${v.replace("<", "&lt;").replace(">", "&gt;")}</span><span>${word}</span></div>`;
       const state = tYay === v ? "yay" : tTried.includes(v) ? (tWobble === v ? "tried wobble" : "tried") : "";
       return `<div class="cmp-btn ${cls} ${state}" data-act="t-pick" data-val="${v.replace("<", "&lt;").replace(">", "&gt;")}"><span class="sign">${v.replace("<", "&lt;").replace(">", "&gt;")}</span><span>${word}</span></div>`;
     }).join("")}</div>`;
@@ -397,10 +441,10 @@ function drawTest() {
   const q = tq();
   const speaker = q.kind !== "spell" && canTalk() ? `<div class="t-corner t-say" data-act="t-say" aria-label="Read it to me">🔊</div>` : `<span class="t-corner-space"></span>`;
   const hint = q.kind === "hw" || !tMiss ? "" : q.kind === "spell" ? "Nearly! Listen and try again 🙂" : "Nearly! Have another go 🙂";
-  app.innerHTML = `<main class="card t-card"><div class="t-top"><div class="t-corner t-x" data-act="t-quit" aria-label="Stop">✕</div>${tDots()}${speaker}</div><p class="t-section">${SECTION_ICON[q.section]} ${sectionOf(q).name}</p>${tQuestionHtml(q)}${q.kind === "hw" ? "" : `<p class="t-hint">${hint}</p>`}</main>`;
+  app.innerHTML = `<main class="card t-card"><div class="t-top"><div class="t-corner t-x" data-act="t-quit" aria-label="Stop">✕</div>${tDots()}${speaker}</div><p class="t-section">${SECTION_ICON[q.section]} ${sectionOf(q).name}</p>${tQuestionHtml(q)}${tShown ? `<div class="t-shown">${tShownMessage(q)}</div><div class="big next t-next-btn" data-act="t-next">Next ➜</div>` : q.kind === "hw" ? "" : `<p class="t-hint">${hint}</p>`}</main>`;
   if (q.kind === "hw") {
     pad.mount(document.querySelector("#hw-pad"), q.item.letter, {
-      onWatchEnd: () => tHwNote("Your turn! Start at the green dot"),
+      onWatchEnd: () => { if (!tShown) tHwNote("Your turn! Start at the green dot"); },
       onRestart: () => { tHwNote("Your turn! Start at the green dot"); const c = document.querySelector("#hw-clear"); if (c) c.textContent = "Clear"; },
     });
   }
@@ -411,17 +455,18 @@ function handleTest(act, val) {
   if (act === "t-sea") { view = "sea"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
   if (act === "t-go") { tPhase = "q"; tStartQuestion(); return; }
   if (act === "t-quit") { if (tBusy) return; clearTimers(); tPhase = "quit"; draw(); return; }
-  if (act === "t-resume") { tPhase = "q"; tStartQuestion(); return; }
+  if (act === "t-resume") { tPhase = "q"; if (tResults[tPos] === "shown") tShowAnswer(); else tStartQuestion(false); return; }
   const q = tq();
   if (!q || tPhase !== "q") return;
   if (act === "t-say") {
-    say(tReadText(q));
+    say(tShown ? tShownSpeech(q) : tReadText(q));
     const el = document.querySelector(".t-say");
     if (el) { el.classList.remove("talking"); void el.offsetWidth; el.classList.add("talking"); }
     return;
   }
+  if (tShown) { if (act === "t-next") { tShown = false; tNext(); } return; }
   if (act === "t-pick") {
-    if (tBusy || q.kind === "spell" || tTried.includes(val)) return;
+    if (tBusy || q.kind === "spell") return;
     if (val === tAnswer(q)) tRight(val); else tWrong(val);
     return;
   }
@@ -441,7 +486,9 @@ function handleTest(act, val) {
   if (act === "t-check") {
     if (!typed) return;
     if (typed === q.item) { tRight("answer"); return; }
-    typed = ""; speak(q.item); tWrong("answer"); // say the word again, then a gentle wobble
+    typed = "";
+    if (!wrongGo(tMiss).show) speak(q.item); // say the word again, then a gentle wobble
+    tWrong("answer");
   }
 }
 function backGrammar() { return `<div class="big" data-act="g-menu">Back</div>`; }

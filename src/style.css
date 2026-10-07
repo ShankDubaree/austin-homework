@@ -681,7 +681,8 @@ a.big[href="#home"] {
 .t-hint { min-height: 30px; margin: 10px 0 0; font-size: 22px; color: #f4d35e; }
 
 /* Gentle wrong answer: a little wobble, then the button fades so he picks another */
-.tried { opacity: 0.35; pointer-events: none; }
+/* Tried buttons stay a bit faded but can still be tapped (each tap is one of his 3 goes) */
+.tried { opacity: 0.55; }
 .wobble { animation: t-wobble 0.55s ease; }
 .tried.wobble { animation: t-wobble 0.55s ease, t-fade 0.9s ease forwards; opacity: 1; }
 .answer.wobble { border-color: #ffb36b; }
@@ -696,7 +697,7 @@ a.big[href="#home"] {
   60% { transform: translateX(-6px) rotate(-1deg); }
   80% { transform: translateX(4px) rotate(1deg); }
 }
-@keyframes t-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0.35; } }
+@keyframes t-fade { 0%, 55% { opacity: 1; } 100% { opacity: 0.55; } }
 @keyframes t-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes t-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
 
@@ -844,3 +845,27 @@ a.big[href="#home"] {
 .t-break-star { display: inline-block; }
 /* Full-width buttons include their border in the width (they were 6px wider than the card) */
 .next, .next-word { box-sizing: border-box; }
+
+/* After 3 goes: the answer shown kindly in gold */
+.t-opt.shown, .cmp-btn.shown {
+  background: #f4d35e;
+  color: #0b1b4a;
+  box-shadow: 0 0 0 5px #fff3b0, 0 0 22px 6px rgba(244, 211, 94, 0.7);
+  animation: t-pop 0.7s ease;
+}
+.dim { opacity: 0.3; }
+.cmp-box.shown { border-style: solid; color: #0b1b4a; background: #f4d35e; }
+.answer.shown { border-style: solid; color: #f4d35e; font-weight: 800; box-shadow: 0 0 18px 4px rgba(244, 211, 94, 0.45); }
+.t-shown {
+  margin: 16px 0 4px;
+  padding: 14px 12px;
+  border: 3px solid #f4d35e;
+  border-radius: 18px;
+  background: #151f4a;
+  color: #fff8e8;
+  font-size: 24px;
+  line-height: 1.3;
+}
+.t-shown b { color: #f4d35e; }
+.t-next-btn { min-height: 96px; font-size: 32px; }
+.t-dot.shown { background: #9eb6ff; border-color: #9eb6ff; }
