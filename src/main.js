@@ -12,6 +12,9 @@ import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 const words = ["olive","sleeve","wings","pencils","dishes","foxes","sunshine","raindrop","school","friend"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
 const sums = ["13+5","26+3","38+1","42+4","54+2","55-3","48-4","36-2","29-5","18-6"];
+// To empty Austin's "My sea creatures" collection once on every device, change this to a new
+// value (e.g. "reset-2026-10-16"). It runs once per device, then never again until it changes.
+const SEA_RESET = "reset-2026-10-09";
 const continents = [
   { id: "europe", name: "Europe" },
   { id: "africa", name: "Africa" },
@@ -715,4 +718,5 @@ app.onclick = function (event) {
   if (!el || (el.className || "").indexOf("off") !== -1) return;
   handle(el.getAttribute("data-act"), el.getAttribute("data-val"));
 };
+sea.resetOnce(SEA_RESET);
 draw();

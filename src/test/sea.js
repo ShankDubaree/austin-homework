@@ -117,3 +117,18 @@ export function collection() {
   ids.sort((a, b) => (b === SPECIAL.id) - (a === SPECIAL.id));
   return ids.map((id) => ({ creature: creatureById(id), count: d.counts[id] || 0 }));
 }
+
+// ---- One-time reset of the collection ----
+// main.js passes in a reset id. The first time a device sees a new id, the sea collection
+// (including Golden Puffers) is emptied and the id is remembered, so it only happens once.
+// Nothing else is touched: night ticks, practice scores and handwriting stars stay.
+const RESET_KEY = "austin-sea-reset";
+export function resetOnce(id) {
+  if (!id) return false;
+  try {
+    if (localStorage.getItem(RESET_KEY) === id) return false;
+    localStorage.removeItem(KEY);
+    localStorage.setItem(RESET_KEY, id);
+    return true;
+  } catch (e) { return false; }
+}
