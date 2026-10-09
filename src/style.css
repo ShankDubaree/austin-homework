@@ -869,3 +869,39 @@ a.big[href="#home"] {
 .t-shown b { color: #f4d35e; }
 .t-next-btn { min-height: 96px; font-size: 32px; }
 .t-dot.shown { background: #9eb6ff; border-color: #9eb6ff; }
+
+/* Adding & taking away */
+.sums-btn { background: #ff9fce; color: #0b1b4a; }
+.sum-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 18px 0 14px;
+  flex-wrap: wrap;
+}
+.sum-text {
+  font-size: 60px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 3px 3px 0 #c41e3a;
+  white-space: nowrap;
+}
+.sum-box {
+  min-width: 84px;
+  height: 80px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 5px dashed #f4d35e;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 44px;
+  font-weight: 900;
+  color: #f4d35e;
+}
+.sum-box.yay { border-style: solid; border-color: #7dff9a; color: #7dff9a; }
+.sum-box.shown { border-style: solid; background: #f4d35e; color: #0b1b4a; }
+.sum-opts { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
+.sum-btn { background: #ff9fce; color: #0b1b4a; font-size: 40px; min-height: 96px; }

@@ -17,7 +17,7 @@ const week = () => ({
   letters: Object.keys(LETTERS),
 });
 // This week's real spellings, only used to check the handwriting letters make sense.
-const realWords = ["have", "give", "smells", "jumps", "catches", "splashes", "playground", "bedroom", "some", "come"];
+const realWords = ["olive", "sleeve", "wings", "pencils", "dishes", "foxes", "sunshine", "raindrop", "school", "friend"];
 
 describe("splitAcrossNights", () => {
   it("gives every night the right number of items", () => {
@@ -141,8 +141,10 @@ describe("handwriting letters for each night", () => {
   });
 
   it("starts with the first letters of the words, and uses different letters each night", () => {
-    expect(hw[0].map((p) => p.letter)).toEqual(["h", "g"]); // have, give
-    expect(hw[1].map((p) => p.letter)).toEqual(["c", "s"]); // catches, splashes
+    expect(hw[0].map((p) => p.letter)).toEqual(["o", "s"]); // olive, sleeve
+    expect(hw[1].map((p) => p.letter)).toEqual(["d", "f"]); // dishes, foxes
+    expect(hw[2].map((p) => p.letter)).toEqual(["c", "h"]); // school (s, f and o were used earlier in the week)
+    expect(hw[3].map((p) => p.letter)).toEqual(["w", "p"]); // wings, pencils
     const all = hw.flat().map((p) => p.letter);
     expect(new Set(all).size).toBe(all.length);
   });
@@ -158,5 +160,21 @@ describe("handwriting letters for each night", () => {
     const tiny = handwritingLetters([["ab"], ["ab"], ["ab"], ["ab"]], ["a", "b"]);
     expect(tiny).toEqual([0, 1, 2, 3].map(() => [{ letter: "a", word: "ab" }, { letter: "b", word: "ab" }]));
     expect(handwritingLetters([[], [], [], []], [])).toEqual([[], [], [], []]);
+  });
+});
+
+describe("this week's sums in the tests", () => {
+  it("puts 3 of the 10 sums in each night, reusing only 2", async () => {
+    const { parseSums } = await import("../sums.js");
+    const sums = parseSums(["13+5", "26+3", "38+1", "42+4", "54+2", "55-3", "48-4", "36-2", "29-5", "18-6"]);
+    const plans = planNights({ ...week(), maths: sums });
+    for (const p of plans) {
+      expect(p.maths).toHaveLength(3);
+      expect(new Set(p.maths.map((m) => m.text)).size).toBe(3);
+    }
+    const uses = count(plans.map((p) => p.maths.map((m) => m.text)));
+    expect(uses.size).toBe(10);
+    expect([...uses.entries()].filter(([, n]) => n === 2).map(([t]) => t)).toEqual(["13 + 5", "26 + 3"]);
+    expect(plans[0].maths.map((m) => m.answer)).toEqual([18, 29, 39]);
   });
 });
