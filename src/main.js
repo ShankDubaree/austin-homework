@@ -5,10 +5,13 @@ import * as pad from "./handwriting/pad.js";
 import * as hwProgress from "./handwriting/progress.js";
 import { NIGHTS, SECTIONS, planNights, nightQuestions, nightSignature } from "./test/nights.js";
 import * as testDone from "./test/done.js";
+import { parseSums, sumOptions, sumWords } from "./sums.js";
 import * as sea from "./test/sea.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
-const words = ["have","give","smells","jumps","catches","splashes","playground","bedroom","some","come"];
+const words = ["olive","sleeve","wings","pencils","dishes","foxes","sunshine","raindrop","school","friend"];
+// This week's adding and taking away sums. Just type them like "13+5" or "55-3".
+const sums = ["13+5","26+3","38+1","42+4","54+2","55-3","48-4","36-2","29-5","18-6"];
 const compares = [
   { left: 14, right: 41 }, { left: 9, right: 6 }, { left: 52, right: 52 },
   { left: 33, right: 39 }, { left: 70, right: 17 }, { left: 25, right: 85 },
@@ -65,6 +68,7 @@ let spellScore = 0, mathsScore = 0, worldScore = 0, grammarScore = 0;
 let spellDone = {}, mathsDone = {}, lastKind = "spell";
 let worldIndex = 0, worldOrder = [], grammarKind = "menu", grammarIndex = 0, note = "";
 let hwFam = FAMILIES[0].id, hwLetter = "c";
+let sumIndex = 0, sumScore = 0, sumDone = {}, sumOpts = []; // Adding & taking away practice
 // Nightly test state
 let tNight = 0, tQs = [], tPos = 0, tPhase = "q", tScore = 0, tMiss = 0, tTried = [], tWobble = "", tYay = "", tBusy = false, tFound = [], tBonus = null;
 let tShown = false, tResults = []; // tShown: answer is being shown after 3 wrong goes. tResults: "first" | "later" | "shown" per question
@@ -182,7 +186,7 @@ function hwCheck() {
 // ---------- Nightly tests (Monday to Thursday) ----------
 // The nights are worked out fresh from the lists at the top of this file every time,
 // so changing the weekly spellings changes the tests too (see src/test/nights.js).
-function testPlans() { return planNights({ spell: words, maths: compares, world: continents, command: commands, noun: nouns, suffix: suffixes, join: joins, letters: Object.keys(LETTERS) }); }
+function testPlans() { return planNights({ spell: words, maths: parseSums(sums), world: continents, command: commands, noun: nouns, suffix: suffixes, join: joins, letters: Object.keys(LETTERS) }); }
 const SECTION_ICON = { spell: "🔤", hw: "✏️", maths: "🔢", world: "🌍", grammar: "🔎" };
 const PRAISE = ["Correct Well Done!", "Brilliant! ⭐", "Super star! ⭐", "Well done! ⭐", "Amazing! ⭐"];
 function canTalk() { return typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined"; }
@@ -207,12 +211,12 @@ function tOptions(kind, item) {
   if (kind === "noun") return shuffle(item.options.slice());
   if (kind === "suffix" || kind === "join") return shuffle(item.choices.slice());
   if (kind === "command") return ["yes", "no"];
-  if (kind === "maths") return ["<", "=", ">"];
+  if (kind === "maths") return sumOptions(item.answer);
   return [];
 }
 function tAnswer(q) {
   const it = q.item;
-  if (q.kind === "maths") return cmpSign(it);
+  if (q.kind === "maths") return String(it.answer);
   if (q.kind === "world") return it.name;
   if (q.kind === "command") return it.yes ? "yes" : "no";
   return it.answer;
@@ -220,7 +224,7 @@ function tAnswer(q) {
 function tReadText(q) {
   const it = q.item, opts = q.options;
   const list = (xs) => xs.slice(0, -1).join(", ") + ", or " + xs[xs.length - 1];
-  if (q.kind === "maths") return `${it.left} and ${it.right}. Is ${it.left} less than, the same as, or more than ${it.right}?`;
+  if (q.kind === "maths") return `What is ${sumWords(it)}? ${opts.slice(0, -1).join(", ")}, or ${opts[opts.length - 1]}?`;
   if (q.kind === "world") return `Which continent is gold? ${list(opts)}?`;
   if (q.kind === "command") return `Is this a command? ${it.text}`;
   if (q.kind === "noun") return `Tap a noun. ${it.line} ${list(opts)}?`;
@@ -343,14 +347,14 @@ function tShownMessage(q) {
   const keep = " — let's keep going!";
   if (q.kind === "spell") return `This one is spelt <b>${it}</b>${keep}`;
   if (q.kind === "hw") return `Good trying! Watch how <b>${it.letter}</b> goes${keep}`;
-  if (q.kind === "maths") return `This one is <b>${it.left} ${cmpSign(it).replace("<", "&lt;").replace(">", "&gt;")} ${it.right}</b>${keep}`;
+  if (q.kind === "maths") return `This one is <b>${it.text} = ${it.answer}</b>${keep}`;
   if (q.kind === "command") return it.yes ? `This one <b>is a command</b>${keep}` : `This one is <b>not a command</b>${keep}`;
   if (q.kind === "suffix") return `This one is <b>${it.stem}${it.answer}</b>${keep}`;
   return `This one is <b>${tAnswer(q)}</b>${keep}`;
 }
 function tShownSpeech(q) {
   const it = q.item;
-  if (q.kind === "maths") return `${it.left} is ${{ "<": "less than", ">": "more than", "=": "the same as" }[cmpSign(it)]} ${it.right}. Let's keep going!`;
+  if (q.kind === "maths") return `${sumWords(it)} is ${it.answer}. Let's keep going!`;
   if (q.kind === "spell") return `This one is spelt ${it.split("").join(", ")}. ${it}. Let's keep going!`;
   return tShownMessage(q).replace(/<[^>]+>/g, "").replace(" — ", ". ");
 }
@@ -396,11 +400,8 @@ function tQuestionHtml(q) {
     return `<p class="ask">Trace the letter</p>${w ? `<p class="t-hw-word">${it.letter} as in ${w}</p>` : ""}<canvas id="hw-pad" class="hw-pad t-pad" aria-label="Writing pad for the letter ${it.letter}"></canvas><p id="hw-note" class="hw-note">${tShown ? "" : "Watch the pen"}</p>${tShown ? "" : `<div class="row"><div class="big next-word" data-act="t-hw-watch">Watch</div><div class="big" id="hw-clear" data-act="t-hw-clear">Clear</div></div><div class="big next" data-act="t-hw-done">Done</div>`}`;
   }
   if (q.kind === "maths") {
-    return `<p class="ask">Which sign?</p><div class="compare"><span class="cmp-num">${it.left}</span><span class="cmp-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${tShown ? cmpSign(it).replace("<", "&lt;").replace(">", "&gt;") : tYay ? tYay.replace("<", "&lt;").replace(">", "&gt;") : "?"}</span><span class="cmp-num">${it.right}</span></div><p class="hint">The open side eats the bigger number</p><div class="row3 t-row3">${[["<", "cmp-less", "less"], ["=", "cmp-same", "same"], [">", "cmp-more", "more"]].map(([v, cls, word]) => {
-      if (tShown) return `<div class="cmp-btn ${cls} ${v === cmpSign(it) ? "shown" : "dim"}"><span class="sign">${v.replace("<", "&lt;").replace(">", "&gt;")}</span><span>${word}</span></div>`;
-      const state = tYay === v ? "yay" : tTried.includes(v) ? (tWobble === v ? "tried wobble" : "tried") : "";
-      return `<div class="cmp-btn ${cls} ${state}" data-act="t-pick" data-val="${v.replace("<", "&lt;").replace(">", "&gt;")}"><span class="sign">${v.replace("<", "&lt;").replace(">", "&gt;")}</span><span>${word}</span></div>`;
-    }).join("")}</div>`;
+    const shownAns = tShown ? it.answer : tYay ? tYay : "?";
+    return `<p class="ask">What is the answer?</p><div class="sum-line"><span class="sum-text">${it.text} =</span><span class="sum-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${shownAns}</span></div><div class="t-opts sum-opts">${q.options.map((n) => tBtn("sum-btn", n, n)).join("")}</div>`;
   }
   if (q.kind === "world") return `<p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${it.id}.jpg" alt="map" /><div class="t-opts">${q.options.map((name) => tBtn("world-btn", name, name)).join("")}</div>`;
   if (q.kind === "command") return `<p class="ask">Is this a command?</p><div class="line">${it.text}</div><p class="hint">A command tells you to do something</p><div class="t-opts">${tBtn("spell-btn", "yes", "Command")}${tBtn("world-btn", "no", "Not a command")}</div>`;
@@ -531,12 +532,13 @@ function draw() {
   }
   if (view === "practice") {
     const last = lastScore();
-    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
+    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big sums-btn" data-act="sums">Adding &amp; taking away</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
     return;
   }
   if (view === "result") {
     let got = spellScore, max = spellMax();
     if (lastKind === "maths") { got = mathsScore; max = compares.length; }
+    if (lastKind === "sums") { got = sumScore; max = parseSums(sums).length; }
     if (lastKind === "world") { got = worldScore; max = continents.length; }
     if (lastKind === "grammar") { got = grammarScore; max = grammarMax(); }
     app.innerHTML = `<main class="card"><p class="week">Hero score</p><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><div class="score-big">${got} / ${max}</div><div class="stars">${stars(got, max)}</div><div class="big next" data-act="practice">Back</div><div class="big next-word" data-act="${lastKind === "grammar" ? "grammar" : lastKind}">Play again</div></main>`;
@@ -547,6 +549,12 @@ function draw() {
     const canType = covered && !listening && count === 0;
     const canCheck = canType && typed.length > 0;
     app.innerHTML = `<main class="card"><p class="week">Spellings · ${spellScore} pts</p><p class="progress">Word ${index + 1} of ${words.length} · ${wordPoints(word)} pts</p>${count > 0 ? `<div class="count">${count}</div>` : ""}<h1 class="word ${pulsing ? "pulse" : ""}">${covered ? "⭐".repeat(Math.min(word.length, 6)) : word}</h1><div class="answer">${count > 0 ? "look at the word" : typed || (canType ? "tap the letters" : "watch and listen")}</div><p id="result"></p><div class="tiles">${tiles.map((letter) => `<div class="tile ${canType ? "" : "off"}" data-act="letter" data-val="${letter}">${letter}</div>`).join("")}</div><div class="big next-word" data-act="hear">Hear the word</div><div class="big next ${canCheck ? "" : "off"}" data-act="check-spell">Check</div><div class="row"><div class="big" data-act="again">Again</div><div class="big next-word" data-act="next-word">Next word</div></div><div class="big" data-act="practice">Back</div></main>`;
+    return;
+  }
+  if (view === "sums") {
+    const list = parseSums(sums);
+    const q = list[sumIndex];
+    app.innerHTML = `<main class="card"><p class="week">Adding &amp; taking away · ${sumScore} pts</p><p class="progress">${sumIndex + 1} of ${list.length}</p><p class="ask">What is the answer?</p><div class="sum-line"><span class="sum-text">${q.text} =</span><span class="sum-box">?</span></div><p id="result" class="${note ? "no" : ""}">${note}</p><div class="t-opts sum-opts">${sumOpts.map((n) => `<div class="big t-opt sum-btn" data-act="sum-pick" data-val="${n}">${n}</div>`).join("")}</div><div class="big" data-act="practice">Back</div></main>`;
     return;
   }
   if (view === "world") {
@@ -621,6 +629,25 @@ function handle(act, val) {
   if (act === "g-menu") { view = "grammar"; grammarKind = "menu"; note = ""; draw(); return; }
   if (act === "spell") { view = "spell"; index = 0; spellScore = 0; spellDone = {}; startSequence(); return; }
   if (act === "maths") { view = "maths"; cmpIndex = 0; cmpGuess = ""; mathsScore = 0; mathsDone = {}; clearTimers(); draw(); return; }
+  if (act === "sums") {
+    view = "sums"; sumIndex = 0; sumScore = 0; sumDone = {}; note = "";
+    sumOpts = sumOptions(parseSums(sums)[0].answer); // shuffled once per sum, so a wrong tap doesn't move the buttons
+    clearTimers(); draw(); window.scrollTo(0, 0); return;
+  }
+  if (act === "sum-pick") {
+    if (document.querySelector(".flash-ok")) return; // already moving on
+    const list = parseSums(sums);
+    const q = list[sumIndex];
+    if (val === String(q.answer)) {
+      if (!sumDone[sumIndex]) { sumScore += 1; sumDone[sumIndex] = true; }
+      note = ""; speak("Well done");
+      flashWellDone(() => {
+        if (sumIndex >= list.length - 1) { lastKind = "sums"; view = "result"; draw(); if (sumScore === list.length) fireConfetti(); }
+        else { sumIndex += 1; sumOpts = sumOptions(list[sumIndex].answer); draw(); }
+      });
+    } else { note = "Try again"; draw(); }
+    return;
+  }
   if (act === "world") {
     view = "world"; worldIndex = 0; worldScore = 0; note = "";
     worldOrder = shuffle(continents.map((_, i) => i));

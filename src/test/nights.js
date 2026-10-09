@@ -86,7 +86,7 @@ export function nightQuestions(plan) {
 // night still has the same questions, so new weekly spellings clear old ticks by themselves.
 function itemKey(kind, item) {
   if (typeof item === "string") return item;
-  if (kind === "maths") return `${item.left}?${item.right}`;
+  if (kind === "maths") return item.text || `${item.left}?${item.right}`;
   if (kind === "world") return item.id;
   if (kind === "hw") return item.letter;
   return item.text || item.line || item.stem || JSON.stringify(item);
