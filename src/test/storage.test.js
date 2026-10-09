@@ -19,7 +19,7 @@ const content = (words, maths) => ({
   world: [{ id: "europe" }, { id: "asia" }], command: [{ text: "Sit down." }], noun: [{ line: "The dog." }],
   suffix: [{ stem: "jump" }], join: [{ line: "I run" }], letters: "abcdefghijklmnopqrstuvwxyz".split(""),
 });
-const lastWeek = content(["have", "give", "smells", "jumps"], [{ left: 14, right: 41 }]);
+const lastWeek = content(["have", "give", "smells", "jumps"], [{ text: "14 + 4", answer: 18 }]);
 const thisWeek = content(["olive", "sleeve", "wings", "pencils"], [{ text: "13 + 5", answer: 18 }]);
 
 describe("a new week's homework", () => {

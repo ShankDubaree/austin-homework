@@ -73,7 +73,7 @@ export function planNights(content, perNight = PER_NIGHT) {
   });
 }
 
-// The questions for one night, in order: spellings, maths, continents, then grammar.
+// The questions for one night, in order: spellings, handwriting, sums, continents, then grammar.
 export function nightQuestions(plan) {
   const qs = [];
   for (const section of SECTIONS) {
@@ -86,7 +86,7 @@ export function nightQuestions(plan) {
 // night still has the same questions, so new weekly spellings clear old ticks by themselves.
 function itemKey(kind, item) {
   if (typeof item === "string") return item;
-  if (kind === "maths") return item.text || `${item.left}?${item.right}`;
+  if (kind === "maths") return item.text; // a sum, e.g. "13 + 5"
   if (kind === "world") return item.id;
   if (kind === "hw") return item.letter;
   return item.text || item.line || item.stem || JSON.stringify(item);

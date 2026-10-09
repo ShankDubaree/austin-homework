@@ -12,13 +12,6 @@ import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 const words = ["olive","sleeve","wings","pencils","dishes","foxes","sunshine","raindrop","school","friend"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
 const sums = ["13+5","26+3","38+1","42+4","54+2","55-3","48-4","36-2","29-5","18-6"];
-const compares = [
-  { left: 14, right: 41 }, { left: 9, right: 6 }, { left: 52, right: 52 },
-  { left: 33, right: 39 }, { left: 70, right: 17 }, { left: 25, right: 85 },
-  { left: 64, right: 46 }, { left: 19, right: 19 }, { left: 81, right: 18 },
-  { left: 47, right: 74 }, { left: 90, right: 99 }, { left: 31, right: 13 },
-  { left: 55, right: 55 }, { left: 26, right: 62 },
-];
 const continents = [
   { id: "europe", name: "Europe" },
   { id: "africa", name: "Africa" },
@@ -62,10 +55,10 @@ const PASSWORD = "baxter";
 const HERO = "/austin-homework/hero.png";
 
 let index = 0, covered = false, listening = false, typed = "", tiles = [], timers = [];
-let cmpIndex = 0, cmpGuess = "", view = "login", count = 0, pulsing = false;
+let view = "login", count = 0, pulsing = false;
 let passGuess = "", loginError = "";
-let spellScore = 0, mathsScore = 0, worldScore = 0, grammarScore = 0;
-let spellDone = {}, mathsDone = {}, lastKind = "spell";
+let spellScore = 0, worldScore = 0, grammarScore = 0;
+let spellDone = {}, lastKind = "spell";
 let worldIndex = 0, worldOrder = [], grammarKind = "menu", grammarIndex = 0, note = "";
 let hwFam = FAMILIES[0].id, hwLetter = "c";
 let sumIndex = 0, sumScore = 0, sumDone = {}, sumOpts = []; // Adding & taking away practice
@@ -75,11 +68,10 @@ let tShown = false, tResults = []; // tShown: answer is being shown after 3 wron
 
 function wordPoints(word) { return word.length; }
 function spellMax() { return words.reduce((sum, word) => sum + word.length, 0); }
-function cmpSign(item) { if (item.left > item.right) return ">"; if (item.left < item.right) return "<"; return "="; }
 function scores() { try { return JSON.parse(localStorage.getItem("austin-scores") || "[]"); } catch (e) { return []; } }
 function saveScore() {
   const list = scores();
-  list.unshift({ when: new Date().toLocaleString(), spell: spellScore, spellMax: spellMax(), maths: mathsScore, mathsMax: compares.length });
+  list.unshift({ when: new Date().toLocaleString(), spell: spellScore, spellMax: spellMax() });
   localStorage.setItem("austin-scores", JSON.stringify(list.slice(0, 20)));
 }
 function lastScore() { return scores()[0]; }
@@ -142,7 +134,6 @@ function startSequence(word = words[index]) {
   tick();
 }
 function finishSpell() { lastKind = "spell"; saveScore(); view = "result"; draw(); if (spellScore === spellMax()) fireConfetti(); }
-function finishMaths() { lastKind = "maths"; saveScore(); view = "result"; draw(); if (mathsScore === compares.length) fireConfetti(); }
 function finishWorld() { lastKind = "world"; view = "result"; draw(); if (worldScore === continents.length) fireConfetti(); }
 function finishGrammar() { lastKind = "grammar"; view = "result"; draw(); if (grammarScore === grammarMax()) fireConfetti(); }
 function nextGrammar(len) {
@@ -532,12 +523,11 @@ function draw() {
   }
   if (view === "practice") {
     const last = lastScore();
-    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last ? `Last time: spellings ${last.spell}/${last.spellMax} · maths ${last.maths}/${last.mathsMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big maths-btn" data-act="maths">Greater or less</div><div class="big sums-btn" data-act="sums">Adding &amp; taking away</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
+    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last && last.spellMax ? `Last time: spellings ${last.spell}/${last.spellMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big sums-btn" data-act="sums">Adding &amp; taking away</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
     return;
   }
   if (view === "result") {
     let got = spellScore, max = spellMax();
-    if (lastKind === "maths") { got = mathsScore; max = compares.length; }
     if (lastKind === "sums") { got = sumScore; max = parseSums(sums).length; }
     if (lastKind === "world") { got = worldScore; max = continents.length; }
     if (lastKind === "grammar") { got = grammarScore; max = grammarMax(); }
@@ -587,8 +577,9 @@ function draw() {
     app.innerHTML = `<main class="card"><p class="week">Joining words · ${grammarScore} pts</p><p class="progress">${grammarIndex + 1} of ${joins.length}</p><p class="ask">Which word joins these?</p><div class="line">${q.line} ___ ${q.rest}</div><p id="result" class="${note ? "no" : ""}">${note}</p>${q.choices.map((w) => `<div class="big grammar-btn" data-act="join" data-val="${w}">${w}</div>`).join("")}${backGrammar()}</main>`;
     return;
   }
-  const q = compares[cmpIndex];
-  app.innerHTML = `<main class="card"><p class="week">Which is bigger?</p><p class="progress">${cmpIndex + 1} of ${compares.length} · ${mathsScore} pts</p><div class="compare"><span class="cmp-num">${q.left}</span><span class="cmp-box">${cmpGuess || "?"}</span><span class="cmp-num">${q.right}</span></div><p class="hint">The open side eats the bigger number</p><p id="result"></p><div class="row3"><div class="cmp-btn cmp-less" data-act="cmp" data-val="&lt;"><span class="sign">&lt;</span><span>less</span></div><div class="cmp-btn cmp-same" data-act="cmp" data-val="="><span class="sign">=</span><span>same</span></div><div class="cmp-btn cmp-more" data-act="cmp" data-val="&gt;"><span class="sign">&gt;</span><span>more</span></div></div><div class="big" data-act="practice">Back</div></main>`;
+  // Anything else (e.g. an old screen name): go back to the Practice list.
+  view = "practice";
+  draw();
 }
 function handle(act, val) {
   if (!act) return;
@@ -628,7 +619,6 @@ function handle(act, val) {
   }
   if (act === "g-menu") { view = "grammar"; grammarKind = "menu"; note = ""; draw(); return; }
   if (act === "spell") { view = "spell"; index = 0; spellScore = 0; spellDone = {}; startSequence(); return; }
-  if (act === "maths") { view = "maths"; cmpIndex = 0; cmpGuess = ""; mathsScore = 0; mathsDone = {}; clearTimers(); draw(); return; }
   if (act === "sums") {
     view = "sums"; sumIndex = 0; sumScore = 0; sumDone = {}; note = "";
     sumOpts = sumOptions(parseSums(sums)[0].answer); // shuffled once per sum, so a wrong tap doesn't move the buttons
@@ -680,19 +670,6 @@ function handle(act, val) {
   }
   if (act === "again") { startSequence(); return; }
   if (act === "next-word") { if (index >= words.length - 1) finishSpell(); else { index += 1; startSequence(); } return; }
-  if (act === "cmp") {
-    cmpGuess = val; draw();
-    const q = compares[cmpIndex];
-    if (val === cmpSign(q)) {
-      if (!mathsDone[cmpIndex]) { mathsScore += 1; mathsDone[cmpIndex] = true; }
-      speak("Well done");
-      flashWellDone(() => { if (cmpIndex >= compares.length - 1) finishMaths(); else { cmpIndex += 1; cmpGuess = ""; draw(); } });
-    } else {
-      const result = document.querySelector("#result");
-      result.textContent = "Try again"; result.className = "no";
-    }
-    return;
-  }
   if (act === "world-pick") {
     const item = continents[worldOrder[worldIndex]];
     if (val === item.name) {
