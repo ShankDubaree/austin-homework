@@ -8,7 +8,7 @@ const count = (nights) => nights.flat().reduce((m, x) => m.set(x, (m.get(x) || 0
 // Same sizes as this week's lists in main.js: 10 words, 14 number pairs, 7 continents, 5 of each grammar kind.
 const week = () => ({
   spell: list("w", 10),
-  maths: list("m", 14).map((id, i) => ({ id, left: i, right: 20 - i })),
+  maths: list("m", 14).map((id, i) => ({ text: `${i} + 1`, answer: i + 1 })),
   world: list("c", 7).map((id) => ({ id, name: id })),
   command: list("cmd", 5).map((text) => ({ text, yes: true })),
   noun: list("noun", 5).map((line) => ({ line, options: ["a", "b", "c"], answer: "a" })),
