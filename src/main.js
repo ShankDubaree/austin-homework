@@ -12,9 +12,7 @@ import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 const words = ["olive","sleeve","wings","pencils","dishes","foxes","sunshine","raindrop","school","friend"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
 const sums = ["13+5","26+3","38+1","42+4","54+2","55-3","48-4","36-2","29-5","18-6"];
-// To empty Austin's "My sea creatures" collection once on every device, change this to a new
-// value (e.g. "reset-2026-10-16"). It runs once per device, then never again until it changes.
-const SEA_RESET = "reset-2026-10-09";
+// "My sea creatures" starts fresh every Saturday (tablet's clock), see weeklyReset in src/test/sea.js.
 const continents = [
   { id: "europe", name: "Europe" },
   { id: "africa", name: "Africa" },
@@ -445,9 +443,9 @@ function drawTest() {
   }
 }
 function handleTest(act, val) {
-  if (act === "test-menu") { view = "test-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "test-menu") { sea.weeklyReset(); view = "test-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
   if (act === "t-night") { tStartNight(Number(val)); return; }
-  if (act === "t-sea") { view = "sea"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
+  if (act === "t-sea") { sea.weeklyReset(); view = "sea"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
   if (act === "t-go") { tPhase = "q"; tStartQuestion(); return; }
   if (act === "t-quit") { if (tBusy) return; clearTimers(); tPhase = "quit"; draw(); return; }
   if (act === "t-resume") { tPhase = "q"; if (tResults[tPos] === "shown") tShowAnswer(); else tStartQuestion(false); return; }
@@ -718,5 +716,5 @@ app.onclick = function (event) {
   if (!el || (el.className || "").indexOf("off") !== -1) return;
   handle(el.getAttribute("data-act"), el.getAttribute("data-val"));
 };
-sea.resetOnce(SEA_RESET);
+sea.weeklyReset(); // new week (Saturday)? start the sea creature collection again
 draw();

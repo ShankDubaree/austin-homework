@@ -118,10 +118,24 @@ export function collection() {
   return ids.map((id) => ({ creature: creatureById(id), count: d.counts[id] || 0 }));
 }
 
-// ---- One-time reset of the collection ----
-// main.js passes in a reset id. The first time a device sees a new id, the sea collection
-// (including Golden Puffers) is emptied and the id is remembered, so it only happens once.
-// Nothing else is touched: night ticks, practice scores and handwriting stars stay.
+// ---- Weekly fresh start for the collection ----
+// Every Saturday (the tablet's own clock and time zone) the collection starts again.
+// The week is named after its Saturday, e.g. "week-2026-10-10". The first time a device
+// sees a new week name, the sea collection (including Golden Puffers) is emptied and the
+// name is remembered, so it happens once a week. Nothing else is touched: night ticks,
+// practice scores and handwriting stars stay.
+
+// The most recent Saturday on or before `now`, in local time.
+export function weekId(now = new Date()) {
+  const daysSinceSat = (now.getDay() + 1) % 7; // Sat 0, Sun 1, ... Fri 6
+  const sat = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysSinceSat);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `week-${sat.getFullYear()}-${pad(sat.getMonth() + 1)}-${pad(sat.getDate())}`;
+}
+// Call on load and whenever the Test screen opens. Returns true if it cleared the collection.
+export function weeklyReset(now = new Date()) {
+  return resetOnce(weekId(now));
+}
 const RESET_KEY = "austin-sea-reset";
 export function resetOnce(id) {
   if (!id) return false;
