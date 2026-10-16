@@ -9,9 +9,9 @@ import { parseSums, sumOptions, sumWords } from "./sums.js";
 import * as sea from "./test/sea.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
-const words = ["olive","sleeve","wings","pencils","dishes","foxes","sunshine","raindrop","school","friend"];
+const words = ["dreaming","sleeping","painted","shouted","played","talked","hunter","singer","what","when"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
-const sums = ["13+5","26+3","38+1","42+4","54+2","55-3","48-4","36-2","29-5","18-6"];
+const sums = ["21+6","34+5","47+2","63+4","72+3","49-7","58-3","67-5","86-4","95-2"];
 // "My sea creatures" starts fresh every Saturday (tablet's clock), see weeklyReset in src/test/sea.js.
 const continents = [
   { id: "europe", name: "Europe" },

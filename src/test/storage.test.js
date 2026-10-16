@@ -20,7 +20,7 @@ const content = (words, maths) => ({
   suffix: [{ stem: "jump" }], join: [{ line: "I run" }], letters: "abcdefghijklmnopqrstuvwxyz".split(""),
 });
 const lastWeek = content(["have", "give", "smells", "jumps"], [{ text: "14 + 4", answer: 18 }]);
-const thisWeek = content(["olive", "sleeve", "wings", "pencils"], [{ text: "13 + 5", answer: 18 }]);
+const thisWeek = content(["dreaming", "sleeping", "played", "talked"], [{ text: "21 + 6", answer: 27 }]);
 
 describe("a new week's homework", () => {
   it("clears last week's ticks but keeps the sea creature collection", () => {
