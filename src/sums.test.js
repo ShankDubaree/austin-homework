@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { parseSum, parseSums, sumOptions, sumWords } from "./sums.js";
 
-const WEEK = ["13+5", "26+3", "38+1", "42+4", "54+2", "55-3", "48-4", "36-2", "29-5", "18-6"];
+const WEEK = ["21+6", "34+5", "47+2", "63+4", "72+3", "49-7", "58-3", "67-5", "86-4", "95-2"];
 
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 describe("reading the sums list", () => {
   it("works out this week's sums", () => {
-    expect(parseSums(WEEK).map((s) => s.answer)).toEqual([18, 29, 39, 46, 56, 52, 44, 34, 24, 12]);
+    expect(parseSums(WEEK).map((s) => s.answer)).toEqual([27, 39, 49, 67, 75, 42, 55, 62, 82, 93]);
     expect(parseSum("55-3")).toEqual({ a: 55, op: "-", b: 3, answer: 52, text: "55 - 3" });
   });
   it("copes with spaces and different minus signs, skips anything it can't read", () => {
