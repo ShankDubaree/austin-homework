@@ -19,3 +19,14 @@ export function markDone(night, sig, score, max) {
   data[night] = { score, max, sig, when: new Date().toLocaleString() };
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
 }
+
+// Keep a saved night when its signature changed but the night is really the same
+// (see carry.js). Only rewrites an entry that has exactly the old signature.
+export function carryOver(night, fromSig, toSig) {
+  const data = load();
+  const e = data[night];
+  if (!e || e.sig !== fromSig || fromSig === toSig) return false;
+  e.sig = toSig;
+  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (err) {}
+  return true;
+}

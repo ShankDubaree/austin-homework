@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { parseSum, parseSums, sumOptions, sumWords } from "./sums.js";
 
-const WEEK = ["21+6", "34+5", "47+2", "63+4", "72+3", "49-7", "58-3", "67-5", "86-4", "95-2"];
+const WEEK = ["35+24", "42+31", "16+52", "27+61", "60+17", "67-25", "78-43", "59-36", "87-51", "94-30"];
 
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 describe("reading the sums list", () => {
   it("works out this week's sums", () => {
-    expect(parseSums(WEEK).map((s) => s.answer)).toEqual([27, 39, 49, 67, 75, 42, 55, 62, 82, 93]);
+    expect(parseSums(WEEK).map((s) => s.answer)).toEqual([59, 73, 68, 88, 77, 42, 35, 23, 36, 64]);
     expect(parseSum("55-3")).toEqual({ a: 55, op: "-", b: 3, answer: 52, text: "55 - 3" });
   });
   it("copes with spaces and different minus signs, skips anything it can't read", () => {
@@ -29,9 +29,18 @@ describe("answer buttons", () => {
         expect(opts).toHaveLength(4);
         expect(new Set(opts).size).toBe(4);
         expect(opts.filter((n) => n === s.answer)).toHaveLength(1);
-        for (const n of opts) { expect(n).toBeGreaterThanOrEqual(0); expect(Math.abs(n - s.answer)).toBeLessThanOrEqual(10); }
-        expect(opts.filter((n) => Math.abs(n - s.answer) <= 2).length).toBeGreaterThanOrEqual(3); // at least 2 near misses
+        for (const n of opts) { expect(n).toBeGreaterThanOrEqual(0); expect(Math.abs(n - s.answer)).toBeLessThanOrEqual(11); }
+        // wrong ones are mostly tens/ones slips: 1 or 10 out
+        const slips = opts.filter((n) => [1, 10].includes(Math.abs(n - s.answer))).length;
+        expect(slips).toBeGreaterThanOrEqual(s.answer >= 10 ? 3 : 2);
       }
+    }
+  });
+  it("this week's sums get tens and ones slips as wrong answers", () => {
+    expect(sumOptions(59, 4, rng(5)).map(Number).sort((a, b) => a - b)).toEqual(expect.arrayContaining([59]));
+    for (let seed = 1; seed < 20; seed++) {
+      const wrong = sumOptions(64, 4, rng(seed)).map(Number).filter((n) => n !== 64);
+      expect(wrong.every((n) => [63, 65, 54, 74].includes(n))).toBe(true);
     }
   });
   it("mixes up where the right answer goes", () => {

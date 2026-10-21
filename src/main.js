@@ -6,12 +6,14 @@ import * as hwProgress from "./handwriting/progress.js";
 import { NIGHTS, SECTIONS, planNights, nightQuestions, nightSignature } from "./test/nights.js";
 import * as testDone from "./test/done.js";
 import { parseSums, sumOptions, sumWords } from "./sums.js";
+import { blocksHtml } from "./blocks.js";
+import { carryTicks } from "./test/carry.js";
 import * as sea from "./test/sea.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
 const words = ["dreaming","sleeping","painted","shouted","played","talked","hunter","singer","what","when"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
-const sums = ["21+6","34+5","47+2","63+4","72+3","49-7","58-3","67-5","86-4","95-2"];
+const sums = ["35+24","42+31","16+52","27+61","60+17","67-25","78-43","59-36","87-51","94-30"];
 // "My sea creatures" starts fresh every Saturday (tablet's clock), see weeklyReset in src/test/sea.js.
 const continents = [
   { id: "europe", name: "Europe" },
@@ -178,7 +180,8 @@ function hwCheck() {
 // ---------- Nightly tests (Monday to Thursday) ----------
 // The nights are worked out fresh from the lists at the top of this file every time,
 // so changing the weekly spellings changes the tests too (see src/test/nights.js).
-function testPlans() { return planNights({ spell: words, maths: parseSums(sums), world: continents, command: commands, noun: nouns, suffix: suffixes, join: joins, letters: Object.keys(LETTERS) }); }
+function testContent() { return { spell: words, maths: parseSums(sums), world: continents, command: commands, noun: nouns, suffix: suffixes, join: joins, letters: Object.keys(LETTERS) }; }
+function testPlans() { return planNights(testContent()); }
 const SECTION_ICON = { spell: "🔤", hw: "✏️", maths: "🔢", world: "🌍", grammar: "🔎" };
 const PRAISE = ["Correct Well Done!", "Brilliant! ⭐", "Super star! ⭐", "Well done! ⭐", "Amazing! ⭐"];
 function canTalk() { return typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined"; }
@@ -393,7 +396,7 @@ function tQuestionHtml(q) {
   }
   if (q.kind === "maths") {
     const shownAns = tShown ? it.answer : tYay ? tYay : "?";
-    return `<p class="ask">What is the answer?</p><div class="sum-line"><span class="sum-text">${it.text} =</span><span class="sum-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${shownAns}</span></div><div class="t-opts sum-opts">${q.options.map((n) => tBtn("sum-btn", n, n)).join("")}</div>`;
+    return `<p class="ask">What is the answer?</p><div class="sum-line"><span class="sum-text">${it.text} =</span><span class="sum-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${shownAns}</span></div>${blocksHtml(it)}<div class="t-opts sum-opts">${q.options.map((n) => tBtn("sum-btn", n, n)).join("")}</div>`;
   }
   if (q.kind === "world") return `<p class="ask">Which continent is gold?</p><img class="map" src="/austin-homework/${it.id}.jpg" alt="map" /><div class="t-opts">${q.options.map((name) => tBtn("world-btn", name, name)).join("")}</div>`;
   if (q.kind === "command") return `<p class="ask">Is this a command?</p><div class="line">${it.text}</div><p class="hint">A command tells you to do something</p><div class="t-opts">${tBtn("spell-btn", "yes", "Command")}${tBtn("world-btn", "no", "Not a command")}</div>`;
@@ -545,7 +548,7 @@ function draw() {
   if (view === "sums") {
     const list = parseSums(sums);
     const q = list[sumIndex];
-    app.innerHTML = `<main class="card"><p class="week">Adding &amp; taking away · ${sumScore} pts</p><p class="progress">${sumIndex + 1} of ${list.length}</p><p class="ask">What is the answer?</p><div class="sum-line"><span class="sum-text">${q.text} =</span><span class="sum-box">?</span></div><p id="result" class="${note ? "no" : ""}">${note}</p><div class="t-opts sum-opts">${sumOpts.map((n) => `<div class="big t-opt sum-btn" data-act="sum-pick" data-val="${n}">${n}</div>`).join("")}</div><div class="big" data-act="practice">Back</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Adding &amp; taking away · ${sumScore} pts</p><p class="progress">${sumIndex + 1} of ${list.length}</p><div class="ask sum-ask">What is the answer?${canTalk() ? ` <span class="sum-say" data-act="sum-say" aria-label="Read it to me">🔊</span>` : ""}</div><div class="sum-line"><span class="sum-text">${q.text} =</span><span class="sum-box">?</span></div>${blocksHtml(q)}<p id="result" class="${note ? "no" : ""}">${note}</p><div class="t-opts sum-opts">${sumOpts.map((n) => `<div class="big t-opt sum-btn" data-act="sum-pick" data-val="${n}">${n}</div>`).join("")}</div><div class="big" data-act="practice">Back</div></main>`;
     return;
   }
   if (view === "world") {
@@ -625,6 +628,7 @@ function handle(act, val) {
     sumOpts = sumOptions(parseSums(sums)[0].answer); // shuffled once per sum, so a wrong tap doesn't move the buttons
     clearTimers(); draw(); window.scrollTo(0, 0); return;
   }
+  if (act === "sum-say") { const q = parseSums(sums)[sumIndex]; if (q) say(`What is ${sumWords(q)}?`); return; }
   if (act === "sum-pick") {
     if (document.querySelector(".flash-ok")) return; // already moving on
     const list = parseSums(sums);
@@ -716,5 +720,6 @@ app.onclick = function (event) {
   if (!el || (el.className || "").indexOf("off") !== -1) return;
   handle(el.getAttribute("data-act"), el.getAttribute("data-val"));
 };
+carryTicks(testContent()); // keep nights already done before the mid-week sums change
 sea.weeklyReset(); // new week (Saturday)? start the sea creature collection again
 draw();

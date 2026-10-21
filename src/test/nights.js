@@ -91,8 +91,11 @@ function itemKey(kind, item) {
   if (kind === "hw") return item.letter;
   return item.text || item.line || item.stem || JSON.stringify(item);
 }
-export function nightSignature(plan) {
-  const text = nightQuestions(plan).map((q) => `${q.kind}:${itemKey(q.kind, q.item)}`).join("|");
+// The sums are left out by default, so changing the sums mid-week keeps the nights he has
+// already done ticked. New spellings (each week) still give new signatures and fresh ticks.
+// withMaths: true gives the older signature (sums included), used to carry old ticks over.
+export function nightSignature(plan, { withMaths = false } = {}) {
+  const text = nightQuestions(plan).filter((q) => withMaths || q.kind !== "maths").map((q) => `${q.kind}:${itemKey(q.kind, q.item)}`).join("|");
   let h = 5381;
   for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
   return h.toString(36);
