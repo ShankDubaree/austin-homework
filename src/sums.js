@@ -14,15 +14,14 @@ export function parseSums(list) {
   return (list || []).map(parseSum).filter(Boolean);
 }
 
-// The right answer plus (count - 1) close wrong ones: one or two away first, then ten away
-// (a common slip with tens), never below zero, all different. Shuffled.
+// The right answer plus (count - 1) plausible wrong ones: tens/ones slips first (10 or 1 out),
+// then 2 or 11/9 out. Never below zero, all different. Shuffled.
 export function sumOptions(answer, count = 4, rand = Math.random) {
-  const near = [answer - 1, answer + 1, answer - 2, answer + 2].filter((n) => n >= 0);
-  const far = [answer + 10, answer - 10, answer + 3, answer - 3].filter((n) => n >= 0);
+  const near = [answer - 1, answer + 1, answer - 10, answer + 10].filter((n) => n >= 0);
+  const far = [answer + 2, answer - 2, answer + 11, answer - 11, answer + 9, answer - 9].filter((n) => n >= 0);
   const pick = (list, n) => list.map((v) => ({ v, r: rand() })).sort((x, y) => x.r - y.r).slice(0, n).map((x) => x.v);
-  const wrong = pick(near, Math.min(2, count - 1));
+  const wrong = pick(near, Math.min(3, count - 1));
   for (const v of pick(far, far.length)) if (wrong.length < count - 1 && !wrong.includes(v)) wrong.push(v);
-  for (const v of near) if (wrong.length < count - 1 && !wrong.includes(v)) wrong.push(v);
   return pick([answer, ...wrong], count).map(String);
 }
 

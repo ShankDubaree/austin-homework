@@ -835,3 +835,28 @@ a.big[href="#home"] {
 .sum-box.shown { border-style: solid; background: #f4d35e; color: #0b1b4a; }
 .sum-opts { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
 .sum-btn { background: #ff9fce; color: #0b1b4a; font-size: 40px; min-height: 96px; }
+
+/* Base-ten blocks under each sum: tens rods blue, ones cubes orange */
+.blocks { margin: 4px auto 10px; }
+.bt-row { display: flex; justify-content: center; align-items: flex-end; gap: 18px; }
+.bt-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bt-blocks { display: flex; align-items: flex-end; gap: 10px; min-height: 108px; }
+.bt-tens { display: flex; gap: 4px; align-items: flex-end; }
+.bt-rod { position: relative; display: flex; flex-direction: column; gap: 1px; padding: 1px; background: #1d4fa8; border-radius: 3px; }
+.bt-rod i { display: block; width: 11px; height: 9px; background: #5aa9ff; border-radius: 1px; }
+.bt-ones { display: grid; grid-template-columns: repeat(2, 13px); gap: 3px; align-content: end; }
+.bt-one, .bt-key-one { position: relative; width: 13px; height: 13px; background: #ffa53d; border: 1px solid #b86400; border-radius: 2px; box-sizing: border-box; }
+.bt-key-ten { display: inline-block; width: 8px; height: 22px; background: #5aa9ff; border: 1px solid #1d4fa8; border-radius: 2px; vertical-align: middle; }
+.bt-key-one { display: inline-block; vertical-align: middle; margin-left: 14px; }
+.bt-rod.gone { background: rgba(29, 79, 168, 0.35); }
+.bt-rod.gone i { background: rgba(90, 169, 255, 0.3); }
+.bt-one.gone { background: rgba(255, 165, 61, 0.28); border-color: rgba(184, 100, 0, 0.4); }
+.gone::after { content: ""; position: absolute; left: -4px; right: -4px; top: 50%; height: 3px; background: #ff5a5a; transform: rotate(-45deg); border-radius: 2px; }
+.bt-rod.gone::after { transform: rotate(-70deg); left: -20px; right: -20px; }
+.bt-num { font-size: 24px; font-weight: 900; color: #fff; }
+.bt-plus { font-size: 34px; font-weight: 900; color: #f4d35e; align-self: center; }
+.bt-note { margin: 4px 0 0; font-size: 18px; color: #dfe7ff; }
+.bt-key { margin-top: 4px; font-size: 16px; color: #b9c6ee; }
+.sum-say { display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #23408f; font-size: 26px; cursor: pointer; vertical-align: middle; margin-left: 8px; }
+.sum-ask { margin: 6px 0; }
+.blocks + #result:empty { min-height: 0; margin: 0; }
