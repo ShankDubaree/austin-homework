@@ -47,7 +47,7 @@ export function handwritingLetters(spellByNight, available, perNight = HW_PER_NI
   const used = new Set();
   return spellByNight.map((words) => {
     const candidates = [];
-    const add = (letter, word) => { if (known.has(letter) && !candidates.some((c) => c.letter === letter)) candidates.push({ letter, word }); };
+    const add = (ch, word) => { /* capitals (Tuesday) trace as lowercase shapes */ const letter = String(ch).toLowerCase(); if (known.has(letter) && !candidates.some((c) => c.letter === letter)) candidates.push({ letter, word }); };
     for (const w of words) add(String(w)[0], w);
     for (const w of words) for (const ch of String(w)) add(ch, w);
     for (const l of available || []) add(l, null);

@@ -9,13 +9,13 @@ const C = new Function(block + "return { words, sums, continents, commands, noun
 
 describe("this week's content", () => {
   it("has the spellings and sums lists", () => {
-    expect(C.words).toEqual(["dreaming", "sleeping", "painted", "shouted", "played", "talked", "hunter", "singer", "what", "when"]);
-    expect(C.sums).toEqual(["35+24", "42+31", "16+52", "27+61", "60+17", "67-25", "78-43", "59-36", "87-51", "94-30"]);
+    expect(C.words).toEqual(["Tuesday", "Wednesday", "February", "Friday", "January", "July", "August", "Spring", "Summer", "once"]);
+    expect(C.sums).toEqual(["23+45", "52+36", "14+73", "62+15", "30+48", "86-24", "97-53", "75-41", "68-32", "49-18"]);
     expect(parseSums(C.sums)).toHaveLength(C.sums.length); // every sum can be read
   });
 
   it("this week's sums are 2-digit and 2-digit with no exchanging, answers 10-99, none from last week", () => {
-    const last = ["21+6", "34+5", "47+2", "63+4", "72+3", "49-7", "58-3", "67-5", "86-4", "95-2"];
+    const last = ["35+24", "42+31", "16+52", "27+61", "60+17", "67-25", "78-43", "59-36", "87-51", "94-30"];
     const ps = parseSums(C.sums);
     expect(ps.filter((s) => s.op === "+")).toHaveLength(5);
     expect(ps.filter((s) => s.op === "-")).toHaveLength(5);
@@ -28,6 +28,10 @@ describe("this week's content", () => {
     expect(new Set(ps.map((s) => s.text)).size).toBe(10);
     expect(new Set(ps.map((s) => s.answer)).size).toBeGreaterThanOrEqual(8); // varied
     expect(C.sums.filter((s) => last.includes(s))).toEqual([]);
+  });
+
+  it("capitalised spellings get their capital tile and no lowercase twin", () => {
+    expect(src).toMatch(/word\.toLowerCase\(\)\.includes\(letter\.toLowerCase\(\)\)/);
   });
 
   it("no longer has Greater or less anywhere", () => {
