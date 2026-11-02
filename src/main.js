@@ -11,9 +11,9 @@ import { carryTicks } from "./test/carry.js";
 import * as sea from "./test/sea.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
-const words = ["dreaming","sleeping","painted","shouted","played","talked","hunter","singer","what","when"];
+const words = ["Tuesday","Wednesday","February","Friday","January","July","August","Spring","Summer","once"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
-const sums = ["35+24","42+31","16+52","27+61","60+17","67-25","78-43","59-36","87-51","94-30"];
+const sums = ["23+45","52+36","14+73","62+15","30+48","86-24","97-53","75-41","68-32","49-18"];
 // "My sea creatures" starts fresh every Saturday (tablet's clock), see weeklyReset in src/test/sea.js.
 const continents = [
   { id: "europe", name: "Europe" },
@@ -107,7 +107,7 @@ function speak(text) {
 }
 function shuffle(list) { return list.map((item) => ({ item, sort: Math.random() })).sort((a, b) => a.sort - b.sort).map(({ item }) => item); }
 function makeTiles(word) {
-  const extraLetters = shuffle(extras.split("")).filter((letter) => !word.includes(letter)).slice(0, word.length < 5 ? 3 : 2);
+  const extraLetters = shuffle(extras.split("")).filter((letter) => !word.toLowerCase().includes(letter.toLowerCase())).slice(0, word.length < 5 ? 3 : 2); // no lowercase twin of a capital (no "t" beside the "T" of Tuesday)
   return shuffle([...word.split(""), ...extraLetters]);
 }
 function choicesFor(name) {
