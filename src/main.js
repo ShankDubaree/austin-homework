@@ -13,7 +13,7 @@ import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
 const words = ["Tuesday","Wednesday","February","Friday","January","July","August","Spring","Summer","once"];
 // This week's adding and taking away sums. Just type them like "13+5" or "55-3".
-const sums = ["23+45","52+36","14+73","62+15","30+48","86-24","97-53","75-41","68-32","49-18"];
+const sums = ["33+24","43+46","32+17","51+36","65-32","57-36","85-42","33-22"];
 // "My sea creatures" starts fresh every Saturday (tablet's clock), see weeklyReset in src/test/sea.js.
 const continents = [
   { id: "europe", name: "Europe" },
