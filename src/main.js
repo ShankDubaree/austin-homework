@@ -9,6 +9,7 @@ import { parseSums, sumOptions, sumWords } from "./sums.js";
 import { blocksHtml } from "./blocks.js";
 import { carryTicks } from "./test/carry.js";
 import * as sea from "./test/sea.js";
+import { BIG, BIG_NAME, bigUnlocked, bigPlan, bigSignature } from "./test/big.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
 const words = ["Tuesday","Wednesday","February","Friday","January","July","August","Spring","Summer","once"];
@@ -238,8 +239,12 @@ function tStartQuestion(fresh = true) {
   else if (q.kind === "hw") { pad.reset(q.item.letter); draw(); tHwWatch(); } // same pad as Handwriting practice
   else draw();
 }
+function tPlanFor(n) { return n === BIG ? bigPlan(words) : testPlans()[n]; }
+function tSigFor(n) { return n === BIG ? bigSignature(words) : nightSignature(testPlans()[n]); }
+function bigOpen() { const p = testPlans()[3]; return bigUnlocked(new Date(), !!testDone.nightResult(3, nightSignature(p))); }
 function tStartNight(n) {
-  const plan = testPlans()[n];
+  if (n === BIG && !bigOpen()) return;
+  const plan = tPlanFor(n);
   tNight = n; tPos = 0; tScore = 0; tFound = []; tBonus = null; tResults = [];
   tQs = nightQuestions(plan).map((q) => ({ ...q, options: tOptions(q.kind, q.item) }));
   view = "test";
@@ -249,9 +254,8 @@ function tStartNight(n) {
 }
 function tFinish() {
   clearTimers();
-  const plan = testPlans()[tNight];
   tScore = nightScore(tResults); // right first time
-  testDone.markDone(tNight, nightSignature(plan), tScore, tQs.length);
+  testDone.markDone(tNight, tSigFor(tNight), tScore, tQs.length);
   const perfect = fullMarks(tResults, tQs.length);
   // Full marks (every question right first time) earns the special Golden Puffer Fish,
   // once for each time a night is finished with full marks.
@@ -411,7 +415,11 @@ function drawTest() {
     app.innerHTML = `<main class="card"><p class="week">Test</p><h1 class="word">Pick a night</h1><div class="t-nights">${plans.map((plan, n) => {
       const res = testDone.nightResult(n, nightSignature(plan));
       return `<div class="big t-night t-night-${n} ${res ? "is-done" : ""}" data-act="t-night" data-val="${n}"><span class="t-night-name">${NIGHTS[n]}</span>${res ? `<span class="t-tick">✔</span><span class="t-night-sub">${res.score} / ${res.max} · tap to do again</span>` : n === today ? `<span class="t-night-sub">Tonight</span>` : ""}</div>`;
-    }).join("")}</div><div class="big t-sea-btn" data-act="t-sea">🐠 My sea creatures (${sea.collection().length})</div><div class="big" data-act="home">Back</div></main>`;
+    }).join("")}${(() => {
+      const res = testDone.nightResult(BIG, bigSignature(words));
+      if (!bigOpen()) return `<div class="big t-night t-big is-locked"><span class="t-night-name">🔒 ${BIG_NAME}</span><span class="t-night-sub">All 10 spellings · opens on Friday</span></div>`;
+      return `<div class="big t-night t-big ${res ? "is-done" : ""}" data-act="t-night" data-val="${BIG}"><span class="t-night-name">🌟 ${BIG_NAME}</span>${res ? `<span class="t-tick">✔</span><span class="t-night-sub">${res.score} / ${res.max} · tap to do again</span>` : `<span class="t-night-sub">All 10 spellings · ready now!</span>`}</div>`;
+    })()}</div><div class="big t-sea-btn" data-act="t-sea">🐠 My sea creatures (${sea.collection().length})</div><div class="big" data-act="home">Back</div></main>`;
     return;
   }
   if (view === "sea") {
@@ -421,7 +429,7 @@ function drawTest() {
   }
   if (tPhase === "reward") {
     const all = sea.collection();
-    app.innerHTML = `<main class="card t-card"><div class="login-wrap"><div class="hero-btn t-hero"><img src="${HERO}" alt="Austin" /></div></div><h1 class="word t-reward">You did it, Austin!</h1><p class="week">${NIGHTS[tNight]} test done ✔</p><div class="score-big">${tScore} / ${tQs.length}</div><p class="t-score-words">${tScore === tQs.length ? "Full marks! All right first time!" : "right first time"}</p><div class="stars">${stars(tScore, tQs.length)}</div>${tBonus ? `<div class="t-bonus"><span class="sea-tag">SPECIAL</span>${sea.creatureArt(sea.SPECIAL, 96)}<span>Bonus: ${sea.SPECIAL.name}!</span></div>` : ""}<div class="big next" data-act="test-menu">Back to tests</div><div class="big next-word" data-act="home">Home</div><h2 class="t-sea-title">Your sea creatures (${all.length})</h2><p class="progress">You found ${tFound.length} tonight</p>${seaGrid(all, tFound)}</main>`;
+    app.innerHTML = `<main class="card t-card"><div class="login-wrap"><div class="hero-btn t-hero"><img src="${HERO}" alt="Austin" /></div></div><h1 class="word t-reward">You did it, Austin!</h1><p class="week">${tNight === BIG ? BIG_NAME : NIGHTS[tNight] + " test"} done ✔</p><div class="score-big">${tScore} / ${tQs.length}</div><p class="t-score-words">${tScore === tQs.length ? "Full marks! All right first time!" : "right first time"}</p><div class="stars">${stars(tScore, tQs.length)}</div>${tBonus ? `<div class="t-bonus"><span class="sea-tag">SPECIAL</span>${sea.creatureArt(sea.SPECIAL, 96)}<span>Bonus: ${sea.SPECIAL.name}!</span></div>` : ""}<div class="big next" data-act="test-menu">Back to tests</div><div class="big next-word" data-act="home">Home</div><h2 class="t-sea-title">Your sea creatures (${all.length})</h2><p class="progress">You found ${tFound.length} tonight</p>${seaGrid(all, tFound)}</main>`;
     return;
   }
   if (tPhase === "quit") {
