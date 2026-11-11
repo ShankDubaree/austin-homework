@@ -29,3 +29,33 @@ describe("base-ten blocks", () => {
     expect(blocksHtml(parseSum("78-43")).match(/ gone"/g)).toHaveLength(7);
   });
 });
+
+describe("exchanging ones in addition", () => {
+  it.each([
+    ["17+19", 16, 6, 36], ["28+26", 14, 4, 54], ["46+17", 13, 3, 63],
+    ["26+45", 11, 1, 71], ["18+25", 13, 3, 43], ["39+48", 17, 7, 87],
+    ["15+25", 10, 0, 40], ["19+29", 18, 8, 48],
+  ])("%s makes one new ten and keeps the right leftover ones", (raw, ones, left, answer) => {
+    const sum = parseSum(raw), m = blocksModel(sum);
+    expect(sum.answer).toBe(answer);
+    expect(m.exchange).toEqual({ ones, tens: 1, remainingOnes: left });
+    const originalTens = m.groups.reduce((total, g) => total + g.tens.length, 0);
+    expect((originalTens + m.exchange.tens) * 10 + left).toBe(answer);
+    expect(m.groups.reduce((total, g) => total + g.ones.length, 0)).toBe(ones);
+    expect(m.groups.flatMap((g) => [...g.tens, ...g.ones]).some(Boolean)).toBe(false);
+    const html = blocksHtml(sum);
+    expect(html).toContain(`makes ${ones} ones.`);
+    expect(html).toContain("Swap 10 ones for 1 ten:");
+    expect(html).toContain(`${left} ones left.`);
+    const swap = html.split('<div class="bt-swap">')[1].split('<p class="bt-note">')[0];
+    expect(swap.match(/class="bt-one"/g)).toHaveLength(10);
+    expect(swap.match(/class="bt-rod"/g)).toHaveLength(1);
+    expect(swap.match(/<i><\/i>/g)).toHaveLength(10);
+  });
+
+  it("does not suggest an exchange for addition below ten ones or subtraction", () => {
+    expect(blocksModel(parseSum("35+24")).exchange).toBeNull();
+    expect(blocksHtml(parseSum("35+24"))).not.toContain("bt-exchange");
+    expect(blocksHtml(parseSum("67-25"))).not.toContain("bt-exchange");
+  });
+});
