@@ -7,17 +7,18 @@ const WORDS = ["Tuesday","Wednesday","February","Friday","January","July","Augus
 const day = (d) => new Date(2026, 10, d, 18, 0);
 
 describe("Big Spelling Test unlock", () => {
-  it("is locked Saturday to Thursday", () => {
-    for (const d of [1, 2, 3, 4, 5, 7]) expect(bigUnlocked(day(d))).toBe(false);
+  it("is unlocked every day of the week", () => {
+    for (const d of [1, 2, 3, 4, 5, 6, 7]) expect(bigUnlocked(day(d))).toBe(true);
   });
-  it("unlocks on Friday (all day)", () => {
+  it("is unlocked all day, including Friday", () => {
     expect(bigUnlocked(new Date(2026, 10, 6, 0, 1))).toBe(true);
     expect(bigUnlocked(new Date(2026, 10, 6, 23, 59))).toBe(true);
   });
-  it("opens early on Thursday only once Thursday's test is done", () => {
+  it("is unlocked whether or not Thursday's test is done", () => {
     expect(bigUnlocked(day(5), true)).toBe(true);
-    expect(bigUnlocked(day(4), true)).toBe(false);
-    expect(bigUnlocked(day(7), true)).toBe(false);
+    expect(bigUnlocked(day(5), false)).toBe(true);
+    expect(bigUnlocked(day(4), true)).toBe(true);
+    expect(bigUnlocked(day(7), true)).toBe(true);
   });
 });
 

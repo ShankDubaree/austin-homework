@@ -543,7 +543,6 @@ a.big[href="#home"] {
 .t-night-2 { background: #5aa7ff; }
 .t-night-3 { background: #c9a0ff; }
 .t-big { background: #ff9fce; }
-.t-big.is-locked { background: #ddd; color: #777; opacity: 0.8; }
 .t-night-sub { font-size: 18px; }
 .t-tick {
   position: absolute;
