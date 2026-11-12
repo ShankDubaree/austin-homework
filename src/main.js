@@ -9,7 +9,7 @@ import { parseSums, sumOptions, sumWords } from "./sums.js";
 import { blocksHtml } from "./blocks.js";
 import { carryTicks } from "./test/carry.js";
 import * as sea from "./test/sea.js";
-import { BIG, BIG_NAME, bigUnlocked, bigPlan, bigSignature } from "./test/big.js";
+import { BIG, BIG_NAME, bigPlan, bigSignature } from "./test/big.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
 const words = ["well","socks","watch","live","splashes","hunting","jumped","helper","playground","school"];
@@ -241,9 +241,7 @@ function tStartQuestion(fresh = true) {
 }
 function tPlanFor(n) { return n === BIG ? bigPlan(words) : testPlans()[n]; }
 function tSigFor(n) { return n === BIG ? bigSignature(words) : nightSignature(testPlans()[n]); }
-function bigOpen() { const p = testPlans()[3]; return bigUnlocked(new Date(), !!testDone.nightResult(3, nightSignature(p))); }
 function tStartNight(n) {
-  if (n === BIG && !bigOpen()) return;
   const plan = tPlanFor(n);
   tNight = n; tPos = 0; tScore = 0; tFound = []; tBonus = null; tResults = [];
   tQs = nightQuestions(plan).map((q) => ({ ...q, options: tOptions(q.kind, q.item) }));
@@ -417,7 +415,6 @@ function drawTest() {
       return `<div class="big t-night t-night-${n} ${res ? "is-done" : ""}" data-act="t-night" data-val="${n}"><span class="t-night-name">${NIGHTS[n]}</span>${res ? `<span class="t-tick">✔</span><span class="t-night-sub">${res.score} / ${res.max} · tap to do again</span>` : n === today ? `<span class="t-night-sub">Tonight</span>` : ""}</div>`;
     }).join("")}${(() => {
       const res = testDone.nightResult(BIG, bigSignature(words));
-      if (!bigOpen()) return `<div class="big t-night t-big is-locked"><span class="t-night-name">🔒 ${BIG_NAME}</span><span class="t-night-sub">All 10 spellings · opens on Friday</span></div>`;
       return `<div class="big t-night t-big ${res ? "is-done" : ""}" data-act="t-night" data-val="${BIG}"><span class="t-night-name">🌟 ${BIG_NAME}</span>${res ? `<span class="t-tick">✔</span><span class="t-night-sub">${res.score} / ${res.max} · tap to do again</span>` : `<span class="t-night-sub">All 10 spellings · ready now!</span>`}</div>`;
     })()}</div><div class="big t-sea-btn" data-act="t-sea">🐠 My sea creatures (${sea.collection().length})</div><div class="big" data-act="home">Back</div></main>`;
     return;

@@ -1,14 +1,13 @@
-// Big Spelling Test: all of this week's spellings, spellings only (no sums), after Thursday.
+// Big Spelling Test: all of this week's spellings, spellings only (no sums).
 // Pure functions so they are easy to unit test.
 
 export const BIG = 4; // saved like a night, under its own slot after Monday(0)..Thursday(3)
 export const BIG_NAME = "Big Spelling Test";
 
-// Unlocks on Friday (getDay() === 5). Also opens on Thursday once the Thursday test is
-// done. Locked Saturday to Wednesday: Saturday is the weekly reset and a new week starts.
-export function bigUnlocked(date, thursdayDone = false) {
-  const day = (date || new Date()).getDay();
-  return day === 5 || (day === 4 && !!thursdayDone);
+// Always unlocked, every day of the week. (date / thursdayDone are kept so older
+// callers and tests still work, but they no longer affect availability.)
+export function bigUnlocked(_date, _thursdayDone = false) {
+  return true;
 }
 
 // Every word once, in a shuffled order. rand is injectable for tests.
