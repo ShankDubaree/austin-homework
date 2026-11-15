@@ -50,32 +50,32 @@ const continents = [
   { id: "antarctica", name: "Antarctica" },
 ];
 const commands = [
-  { text: "Wash your hands.", yes: true },
-  { text: "The dog jumps.", yes: false },
-  { text: "Sit down.", yes: true },
-  { text: "She smells the flowers.", yes: false },
-  { text: "Give me the ball.", yes: true },
+  { text: "Put on your coat.", yes: true },
+  { text: "The train is late.", yes: false },
+  { text: "Join the two lines.", yes: true },
+  { text: "Mum paints a picture.", yes: false },
+  { text: "Pass me the coin.", yes: true },
 ];
 const nouns = [
-  { line: "The dog splashes in the puddle.", options: ["dog", "splashes", "in"], answer: "dog" },
-  { line: "Austin jumps on the playground.", options: ["jumps", "playground", "on"], answer: "playground" },
-  { line: "The cat sleeps in the bedroom.", options: ["sleeps", "bedroom", "in"], answer: "bedroom" },
-  { line: "Give the ball to Sam.", options: ["Give", "ball", "to"], answer: "ball" },
-  { line: "Some birds catch worms.", options: ["catch", "worms", "some"], answer: "worms" },
+  { line: "The train stops at the station.", options: ["stops", "train", "at"], answer: "train" },
+  { line: "People wait by the door.", options: ["People", "wait", "by"], answer: "People" },
+  { line: "Tom hid a coin under the sofa.", options: ["hid", "under", "coin"], answer: "coin" },
+  { line: "Mum will paint the wall.", options: ["will", "paint", "wall"], answer: "wall" },
+  { line: "The rain falls on the grass.", options: ["falls", "on", "rain"], answer: "rain" },
 ];
 const suffixes = [
-  { stem: "jump", answer: "s", choices: ["s", "ful", "less"] },
-  { stem: "splash", answer: "es", choices: ["es", "ful", "less"] },
-  { stem: "play", answer: "ed", choices: ["ed", "ful", "less"] },
-  { stem: "peace", answer: "ful", choices: ["ful", "es", "ed"] },
-  { stem: "end", answer: "less", choices: ["less", "es", "ful"] },
+  { stem: "fox", answer: "es", choices: ["es", "ful", "less"] },
+  { stem: "join", answer: "ed", choices: ["ed", "ful", "less"] },
+  { stem: "loud", answer: "er", choices: ["er", "ful", "less"] },
+  { stem: "care", answer: "ful", choices: ["ful", "es", "ment"] },
+  { stem: "hope", answer: "less", choices: ["less", "es", "ment"] },
 ];
 const joins = [
-  { line: "I have a ball", rest: "I give it to you.", answer: "and", choices: ["and", "but", "or"] },
-  { line: "I want to play", rest: "it is raining.", answer: "but", choices: ["but", "and", "or"] },
-  { line: "I come inside", rest: "I am cold.", answer: "because", choices: ["because", "or", "and"] },
-  { line: "The dog smells food", rest: "the cat jumps.", answer: "and", choices: ["and", "because", "or"] },
-  { line: "We stay in", rest: "it is raining.", answer: "because", choices: ["because", "or", "but"] },
+  { line: "I put on my shoes", rest: "I opened the door.", answer: "and", choices: ["and", "but", "or"] },
+  { line: "I wanted to play outside", rest: "it was too wet.", answer: "but", choices: ["but", "and", "or"] },
+  { line: "Sam put on a jumper", rest: "he felt cold.", answer: "because", choices: ["because", "or", "and"] },
+  { line: "Is that a coin", rest: "a button?", answer: "or", choices: ["or", "and", "but"] },
+  { line: "I washed my brush", rest: "I put the paint away.", answer: "and", choices: ["and", "because", "or"] },
 ];
 const extras = "abcdefghijklmnopqrstuvwxyz";
 const app = document.querySelector("#app");

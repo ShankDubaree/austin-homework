@@ -99,4 +99,26 @@ describe("this week's content", () => {
     expect(src).toMatch(/maths: parseMaths\(sums\)/);
     expect(src).toMatch(/planNights\(testContent\(\)\)/);
   });
+
+  it("has 5 of each grammar kind, with one answer in the choices", () => {
+    expect(C.commands).toHaveLength(5);
+    expect(C.nouns).toHaveLength(5);
+    expect(C.suffixes).toHaveLength(5);
+    expect(C.joins).toHaveLength(5);
+    expect(C.commands.some((q) => q.yes)).toBe(true);
+    expect(C.commands.some((q) => !q.yes)).toBe(true);
+    for (const q of C.nouns) {
+      expect(q.options).toHaveLength(3);
+      expect(q.options).toContain(q.answer);
+      expect(q.line.toLowerCase()).toContain(q.answer.toLowerCase());
+    }
+    for (const q of C.suffixes) {
+      expect(q.choices).toHaveLength(3);
+      expect(q.choices).toContain(q.answer);
+    }
+    for (const q of C.joins) {
+      expect(q.choices).toHaveLength(3);
+      expect(q.choices).toContain(q.answer);
+    }
+  });
 });
