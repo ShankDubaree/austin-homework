@@ -867,3 +867,85 @@ a.big[href="#home"] {
 .bt-swap { display: flex; justify-content: center; align-items: center; gap: 18px; margin: 8px 0; }
 .bt-bundle { display: grid; grid-template-columns: repeat(2, 13px); gap: 3px; padding: 6px; border: 2px solid #ffa53d; border-radius: 6px; }
 .bt-arrow { font-size: 30px; color: #f4d35e; }
+
+/* Fireworks money */
+.fw-sum {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 12px;
+  margin: 12px 0 8px;
+  flex-wrap: wrap;
+}
+.fw-card {
+  background: #17306e;
+  border: 3px solid #5aa9ff;
+  border-radius: 16px;
+  padding: 10px 14px 12px;
+  min-width: 120px;
+  text-align: center;
+}
+.fw-emoji { font-size: 42px; line-height: 1.1; }
+.fw-name { font-size: 18px; font-weight: 800; color: #fff; margin-top: 2px; text-transform: capitalize; }
+.fw-price { font-size: 26px; font-weight: 900; color: #f4d35e; margin: 2px 0 8px; }
+.fw-plus { font-size: 40px; font-weight: 900; color: #f4d35e; align-self: center; }
+.fw-coins { display: flex; justify-content: center; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 44px; }
+.coin {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 900;
+  color: #0b1b4a;
+  box-sizing: border-box;
+  border: 2px solid rgba(11, 27, 74, 0.35);
+}
+.coin.c20 { background: linear-gradient(180deg, #f3f5f8, #c5ccd4); width: 46px; height: 46px; }
+.coin.c10 { background: linear-gradient(180deg, #f7f3e4, #d8c48a); }
+.coin.c5 { background: linear-gradient(180deg, #f4d4b0, #d08a4a); width: 38px; height: 38px; font-size: 12px; }
+.coin.c2 { background: linear-gradient(180deg, #f4d4b0, #d08a4a); width: 36px; height: 36px; }
+.coin.c1 { background: linear-gradient(180deg, #f4d4b0, #d08a4a); width: 32px; height: 32px; font-size: 11px; }
+.fw-key { margin: 0 0 8px; display: flex; justify-content: center; gap: 8px; opacity: 0.9; }
+.fw-shop {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+.fw-shop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #17306e;
+  border: 2px solid #5aa9ff;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-weight: 800;
+  color: #fff;
+  font-size: 18px;
+}
+.fw-shop-item .fw-emoji { font-size: 28px; }
+.fw-shop-item .fw-name { margin: 0; flex: 1; text-align: left; font-size: 16px; }
+.fw-shop-item .fw-price { margin: 0; font-size: 20px; }
+.fw-hint { margin: 4px 0 10px; font-size: 18px; color: #dfe7ff; }
+.fw-opts { grid-template-columns: 1fr; }
+.fw-opt { font-size: 22px; min-height: 72px; line-height: 1.25; text-align: center; }
+.money-in {
+  width: 160px;
+  max-width: 70vw;
+  height: 80px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 5px dashed #f4d35e;
+  border-radius: 16px;
+  background: #0b1b4a;
+  color: #f4d35e;
+  font-size: 40px;
+  font-weight: 900;
+  text-align: center;
+  font-family: inherit;
+}
+.money-in:focus { outline: none; border-style: solid; background: #13265c; }
+.money-in.wobble { border-color: #ff9fce; }
