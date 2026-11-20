@@ -9,39 +9,29 @@ const block = src.slice(src.indexOf("const words"), src.indexOf("const extras"))
 const C = new Function(block + "return { words, sums, continents, commands, nouns, suffixes, joins };")();
 
 describe("this week's content", () => {
-  it("has this week's spellings and fireworks money questions", () => {
-    expect(C.words).toEqual(["shorter", "louder", "slowest", "fastest", "rain", "train", "paint", "join", "coin", "people"]);
+  it("has this week's spellings and the school's 10 regrouping sums", () => {
+    expect(C.words).toEqual(["play", "spray", "enjoy", "destroy", "rule", "mute", "flute", "rescue", "flew", "again"]);
     expect(C.words.every((w) => w === w.toLowerCase())).toBe(true);
-    expect(C.sums).toHaveLength(6);
+    expect(C.sums).toEqual(["25+26", "85-56", "31+29", "34+57", "62-38", "72-26", "83-48", "54+38", "74+18", "95-47"]);
     const ps = parseMaths(C.sums);
-    expect(ps).toHaveLength(C.sums.length); // every question can be read
-    expect(ps.filter((q) => q.type === "add")).toHaveLength(4);
-    expect(ps.filter((q) => q.type === "exact")).toHaveLength(2);
+    expect(ps).toHaveLength(10);
+    expect(ps.map((q) => q.answer)).toEqual([51, 29, 60, 91, 24, 46, 35, 92, 92, 48]); // checked against the sheet
+    expect(ps.every((q) => q.type === undefined && q.a >= 10 && q.b >= 10 && q.a < 100 && q.b < 100)).toBe(true);
+    expect(ps.filter((q) => q.op === "+")).toHaveLength(5);
+    expect(ps.filter((q) => q.op === "-")).toHaveLength(5);
+    // every taking away here needs a ten exchanging (not enough ones)
+    for (const q of ps.filter((q) => q.op === "-")) expect(q.a % 10).toBeLessThan(q.b % 10);
+    expect(new Set(ps.map((q) => q.text)).size).toBe(10);
   });
 
-  it("the 4 altogether questions use sheet 1 prices and the 2 exact-£1 questions have one 100p option", () => {
-    const ps = parseMaths(C.sums);
-    const adds = ps.filter((q) => q.type === "add");
-    expect(adds.map((q) => [q.a.cost, q.b.cost, q.answer])).toEqual([
-      [15, 35, 50], [10, 25, 35], [35, 30, 65], [25, 30, 55],
-    ]);
-    for (const q of adds) {
-      expect([15, 35, 10, 25, 30]).toContain(q.a.cost);
-      expect([15, 35, 10, 25, 30]).toContain(q.b.cost);
-    }
-    const exacts = ps.filter((q) => q.type === "exact");
-    expect(exacts.map((q) => q.answer)).toEqual([
-      "🧨 40p + 🎆 30p + 🎆 30p",
-      "✨ 20p + ✨ 20p + ✨ 20p + 🧨 40p",
-    ]);
-    for (const q of exacts) {
-      expect(q.options.filter((o) => o.total === 100)).toHaveLength(1);
-      expect(q.shop.map((fw) => fw.cost).sort()).toEqual([20, 30, 40, 45]);
-    }
-    expect(new Set(ps.map((q) => q.text)).size).toBe(6);
+  it("practice says Adding & taking away (not Fireworks) and the sums are typed with the number keypad", () => {
+    expect(src).toContain('data-act="sums">Adding &amp; taking away');
+    expect(src).not.toMatch(/Fireworks/);
+    expect(src).toMatch(/inputmode="numeric"/);
+    expect(src).not.toMatch(/sumOptions\(/);
   });
 
-  it("changing only the maths keeps night ticks (signature ignores maths) and every night still gets 3 questions", async () => {
+  it("changing only the maths keeps night ticks, every night gets 3 sums and all 10 are used", async () => {
     const { planNights, nightSignature, PER_NIGHT } = await import("./test/nights.js");
     const old = ["23+45", "52+36", "14+73", "62+15", "30+48", "86-24", "97-53", "75-41", "68-32", "49-18"];
     const content = { spell: C.words, world: C.continents, command: C.commands, noun: C.nouns, suffix: C.suffixes, join: C.joins };
@@ -51,17 +41,20 @@ describe("this week's content", () => {
     for (const p of b) {
       expect(p.maths).toHaveLength(PER_NIGHT.maths);
       expect(new Set(p.maths.map((s) => s.text)).size).toBe(3);
+      expect(p.maths.some((s) => s.op === "+")).toBe(true); // a mix of adding and taking away every night
+      expect(p.maths.some((s) => s.op === "-")).toBe(true);
+      expect(p.spell).toHaveLength(5);
     }
-    const uses = b.flatMap((p) => p.maths.map((s) => s.text));
-    for (const s of parseMaths(C.sums)) expect(uses.filter((text) => text === s.text)).toHaveLength(2);
-    expect(b[2].maths).toEqual(b[0].maths);
-    expect(b[3].maths).toEqual(b[1].maths);
+    expect(new Set(b.flatMap((p) => p.maths.map((s) => s.text))).size).toBe(10);
+    expect(b[0].spell).toEqual(["play", "spray", "enjoy", "destroy", "rule"]);
+    expect(b[1].spell).toEqual(["mute", "flute", "rescue", "flew", "again"]);
+    expect(b[3].maths.map((s) => s.text)).toEqual(["95 - 47", "25 + 26", "85 - 56"]);
   });
 
   it("new spellings reset every night's tick and the Big Test, which uses all 10 new words", async () => {
     const { planNights, nightSignature } = await import("./test/nights.js");
     const { bigPlan, bigSignature } = await import("./test/big.js");
-    const oldWords = ["Tuesday", "Wednesday", "February", "Friday", "January", "July", "August", "Spring", "Summer", "once"];
+    const oldWords = ["shorter", "louder", "slowest", "fastest", "rain", "train", "paint", "join", "coin", "people"];
     const content = { spell: C.words, maths: parseMaths(C.sums), world: C.continents, command: C.commands, noun: C.nouns, suffix: C.suffixes, join: C.joins };
     const old = planNights({ ...content, spell: oldWords });
     planNights(content).forEach((p, i) => expect(nightSignature(p)).not.toBe(nightSignature(old[i])));

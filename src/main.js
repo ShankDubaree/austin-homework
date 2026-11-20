@@ -5,7 +5,6 @@ import * as pad from "./handwriting/pad.js";
 import * as hwProgress from "./handwriting/progress.js";
 import { NIGHTS, SECTIONS, planNights, nightQuestions, nightSignature } from "./test/nights.js";
 import * as testDone from "./test/done.js";
-import { sumOptions } from "./sums.js";
 import { blocksHtml } from "./blocks.js";
 import { parseMaths, samePence, moneySpeak, moneyShown, moneyShownSpeech, moneyVisual } from "./money.js";
 import { carryTicks } from "./test/carry.js";
@@ -13,32 +12,11 @@ import * as sea from "./test/sea.js";
 import { BIG, BIG_NAME, bigPlan, bigSignature } from "./test/big.js";
 import { wrongGo, rightGo, nightScore, fullMarks } from "./test/goes.js";
 
-const words = ["shorter","louder","slowest","fastest","rain","train","paint","join","coin","people"];
-// This week's maths: Fireworks — adding money in pence (same unit).
-const fireworksShop = [
-  { emoji: "🚀", name: "Rocket", cost: 45 },
-  { emoji: "🧨", name: "Firecracker", cost: 40 },
-  { emoji: "✨", name: "Sparkler", cost: 20 },
-  { emoji: "🎆", name: "Fountain", cost: 30 },
-];
-const sums = [
-  { type: "add", a: { emoji: "🧨", name: "Poppers", article: "", verb: "cost", cost: 15 }, b: { emoji: "🚀", name: "rocket", article: "a", verb: "costs", cost: 35 } },
-  { type: "add", a: { emoji: "🎆", name: "fountain", article: "a", verb: "costs", cost: 10 }, b: { emoji: "🎇", name: "catherine wheel", article: "a", verb: "costs", cost: 25 } },
-  { type: "exact", prompt: "Which fireworks could you buy with exactly £1.00?", shop: fireworksShop, options: [
-    { label: "🧨 40p + 🎆 30p + 🎆 30p", total: 100 },
-    { label: "🚀 45p + 🎆 30p + ✨ 20p", total: 95 },
-    { label: "🚀 45p + 🧨 40p + ✨ 20p", total: 105 },
-    { label: "✨ 20p + ✨ 20p + ✨ 20p + 🎆 30p", total: 90 },
-  ] },
-  { type: "add", a: { emoji: "🚀", name: "rocket", article: "a", verb: "costs", cost: 35 }, b: { emoji: "🎆", name: "bottle firework", article: "a", verb: "costs", cost: 30 } },
-  { type: "add", a: { emoji: "🎇", name: "catherine wheel", article: "a", verb: "costs", cost: 25 }, b: { emoji: "🎆", name: "bottle firework", article: "a", verb: "costs", cost: 30 } },
-  { type: "exact", prompt: "Which fireworks could you buy with exactly £1.00?", shop: fireworksShop, options: [
-    { label: "✨ 20p + ✨ 20p + ✨ 20p + 🧨 40p", total: 100 },
-    { label: "🚀 45p + 🚀 45p + ✨ 20p", total: 110 },
-    { label: "🧨 40p + 🎆 30p + ✨ 20p", total: 90 },
-    { label: "🚀 45p + 🧨 40p + ✨ 20p", total: 105 },
-  ] },
-];
+const words = ["play","spray","enjoy","destroy","rule","mute","flute","rescue","flew","again"];
+// This week's maths: school sheet "Addition and Subtraction of two 2-digit numbers (regrouping)".
+// Teacher: children practise drawing tens and ones (no column method until juniors), so the
+// sums show base-ten blocks only, with the exchange drawn in blocks (see src/blocks.js).
+const sums = ["25+26","85-56","31+29","34+57","62-38","72-26","83-48","54+38","74+18","95-47"];
 // "My sea creatures" starts fresh every Saturday (tablet's clock), see weeklyReset in src/test/sea.js.
 const continents = [
   { id: "europe", name: "Europe" },
@@ -89,7 +67,7 @@ let spellScore = 0, worldScore = 0, grammarScore = 0;
 let spellDone = {}, lastKind = "spell";
 let worldIndex = 0, worldOrder = [], grammarKind = "menu", grammarIndex = 0, note = "";
 let hwFam = FAMILIES[0].id, hwLetter = "c";
-let sumIndex = 0, sumScore = 0, sumDone = {}, sumOpts = [], moneyGuess = ""; // Fireworks money practice
+let sumIndex = 0, sumScore = 0, sumDone = {}, sumOpts = [], moneyGuess = ""; // Adding & taking away practice (moneyGuess: what he has typed)
 // Nightly test state
 let tNight = 0, tQs = [], tPos = 0, tPhase = "q", tScore = 0, tMiss = 0, tTried = [], tWobble = "", tYay = "", tBusy = false, tFound = [], tBonus = null;
 let tShown = false, tResults = []; // tShown: answer is being shown after 3 wrong goes. tResults: "first" | "later" | "shown" per question
@@ -233,8 +211,7 @@ function tOptions(kind, item) {
   if (kind === "command") return ["yes", "no"];
   if (kind === "maths") {
     if (item.type === "exact") return shuffle((item.options || []).map((o) => o.label));
-    if (item.type === "add") return [];
-    return sumOptions(item.answer);
+    return []; // typed answer (numeric keypad)
   }
   return [];
 }
@@ -251,7 +228,7 @@ function tReadText(q) {
   if (q.kind === "maths") {
     if (it.type === "add") return it.prompt;
     if (it.type === "exact") return `${it.prompt} ${opts.slice(0, -1).join(", ")}, or ${opts[opts.length - 1]}?`;
-    return `What is ${moneySpeak(it)}? ${opts.slice(0, -1).join(", ")}, or ${opts[opts.length - 1]}?`;
+    return moneySpeak(it);
   }
   if (q.kind === "world") return `Which continent is gold? ${list(opts)}?`;
   if (q.kind === "command") return `Is this a command? ${it.text}`;
@@ -422,6 +399,17 @@ function moneyInput(shownAns, cls) {
   if (shownAns !== null) return `<div class="sum-line"><span class="sum-box ${cls}">${shownAns}</span></div>`;
   return `<div class="sum-line"><input id="money-in" class="money-in ${tWobble === "answer" ? "wobble" : ""}" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="8" aria-label="Answer in pence" placeholder="? p" value="${escAttr(moneyGuess)}" /></div><p class="fw-hint">Type the number of pence, like 50 or 50p</p><div class="big next" data-act="${view === "sums" ? "sum-check" : "t-money"}">Check</div>`;
 }
+// Typed answer for the adding and taking away sums (numbers only, opens the number keypad on the tablet).
+function sumInput(it) {
+  const say = canTalk() ? ` <span class="sum-say" data-act="${view === "sums" ? "sum-say" : "t-say"}" aria-label="Read it to me">🔊</span>` : "";
+  const inTest = view !== "sums";
+  const shown = inTest && tShown, yay = inTest && tYay;
+  const done = shown || yay;
+  const box = done
+    ? `<span class="sum-box ${yay ? "yay" : ""} ${shown ? "shown" : ""}">${it.answer}</span>`
+    : `<input id="money-in" class="money-in sum-in ${tWobble === "answer" ? "wobble" : ""}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="3" aria-label="Answer" placeholder="?" value="${escAttr(moneyGuess)}" />`;
+  return `<p class="ask">What is the answer?${view === "sums" ? say : ""}</p><div class="sum-line"><span class="sum-text">${it.text} =</span>${box}</div>${blocksHtml(it)}${done ? "" : `<div class="big next" data-act="${view === "sums" ? "sum-check" : "t-money"}">Check</div>`}`;
+}
 function mathsQuestionHtml(it, options, inTest) {
   const visual = (it.type === "add" || it.type === "exact") ? moneyVisual(it) : blocksHtml(it);
   if (it.type === "exact") {
@@ -437,11 +425,7 @@ function mathsQuestionHtml(it, options, inTest) {
     const say = (!inTest && canTalk()) ? ` <span class="sum-say" data-act="sum-say" aria-label="Read it to me">🔊</span>` : "";
     return `<p class="ask sum-ask">${it.prompt}${say}</p>${visual}${moneyInput(shownAns, cls)}`;
   }
-  const shownAns = tShown ? it.answer : tYay ? tYay : "?";
-  const buttons = inTest
-    ? options.map((n) => tBtn("sum-btn", n, n)).join("")
-    : options.map((n) => `<div class="big t-opt sum-btn" data-act="sum-pick" data-val="${n}">${n}</div>`).join("");
-  return `<p class="ask">What is the answer?</p><div class="sum-line"><span class="sum-text">${it.text} =</span><span class="sum-box ${tYay ? "yay" : ""} ${tShown ? "shown" : ""}">${shownAns}</span></div>${visual}<div class="t-opts sum-opts">${buttons}</div>`;
+  return sumInput(it);
 }
 function bindMoneyInput() {
   const el = document.querySelector("#money-in");
@@ -455,8 +439,7 @@ function bindMoneyInput() {
 function nextMathsOptions(q) {
   if (!q) return [];
   if (q.type === "exact") return shuffle((q.options || []).map((o) => o.label));
-  if (q.type === "add") return [];
-  return sumOptions(q.answer);
+  return []; // adding money and plain sums are typed
 }
 
 function tQuestionHtml(q) {
@@ -523,7 +506,7 @@ function drawTest() {
       onRestart: () => { tHwNote("Your turn! Start at the green dot"); const c = document.querySelector("#hw-clear"); if (c) c.textContent = "Clear"; },
     });
   }
-  if (q.kind === "maths" && q.item.type === "add" && !tShown && !tYay) bindMoneyInput();
+  if (q.kind === "maths" && q.item.type !== "exact" && !tShown && !tYay) bindMoneyInput();
 }
 function handleTest(act, val) {
   if (act === "test-menu") { sea.weeklyReset(); view = "test-menu"; clearTimers(); draw(); window.scrollTo(0, 0); return; }
@@ -554,7 +537,7 @@ function handleTest(act, val) {
     return;
   }
   if (act === "t-money") {
-    if (tBusy || q.kind !== "maths" || q.item.type !== "add") return;
+    if (tBusy || q.kind !== "maths" || q.item.type === "exact") return;
     const raw = (document.querySelector("#money-in") || {}).value ?? moneyGuess;
     moneyGuess = raw;
     if (samePence(raw, q.item.answer)) { moneyGuess = ""; tRight(String(q.item.answer)); }
@@ -615,7 +598,7 @@ function draw() {
   }
   if (view === "practice") {
     const last = lastScore();
-    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last && last.spellMax ? `Last time: spellings ${last.spell}/${last.spellMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big sums-btn" data-act="sums">🎆 Fireworks</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
+    app.innerHTML = `<main class="card"><div class="login-wrap"><div class="hero-btn"><img src="${HERO}" alt="Austin" /></div></div><p class="week">Austin</p><h1 class="word">Practice</h1><p class="progress">${last && last.spellMax ? `Last time: spellings ${last.spell}/${last.spellMax}` : "Pick one"}</p><div class="big spell-btn" data-act="spell">Spellings</div><div class="big sums-btn" data-act="sums">Adding &amp; taking away</div><div class="big world-btn" data-act="world">Continents</div><div class="big grammar-btn" data-act="grammar">Grammar hunt</div><div class="big hand-btn" data-act="hw">Handwriting</div><div class="big" data-act="home">Back</div></main>`;
     return;
   }
   if (view === "result") {
@@ -636,7 +619,7 @@ function draw() {
   if (view === "sums") {
     const list = parseMaths(sums);
     const q = list[sumIndex];
-    app.innerHTML = `<main class="card"><p class="week">🎆 Fireworks · ${sumScore} pts</p><p class="progress">${sumIndex + 1} of ${list.length}</p>${mathsQuestionHtml(q, sumOpts, false)}<p id="result" class="${note ? "no" : ""}">${note}</p><div class="big" data-act="practice">Back</div></main>`;
+    app.innerHTML = `<main class="card"><p class="week">Adding &amp; taking away · ${sumScore} pts</p><p class="progress">${sumIndex + 1} of ${list.length}</p>${mathsQuestionHtml(q, sumOpts, false)}<p id="result" class="${note ? "no" : ""}">${note}</p><div class="big" data-act="practice">Back</div></main>`;
     bindMoneyInput();
     return;
   }
@@ -724,7 +707,7 @@ function handle(act, val) {
     const q = list[sumIndex];
     let ok = false;
     if (act === "sum-check") {
-      if (q.type !== "add") return;
+      if (q.type === "exact") return;
       const raw = (document.querySelector("#money-in") || {}).value ?? moneyGuess;
       moneyGuess = raw;
       ok = samePence(raw, q.answer);

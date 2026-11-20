@@ -1,10 +1,33 @@
 import { describe, it, expect } from "vitest";
 import { parsePence, samePence, coinsFor, parseMaths, addPrompt, moneySpeak, moneyShown, moneyVisual } from "./money.js";
-import fs from "fs";
 
-const src = fs.readFileSync(new URL("./main.js", import.meta.url), "utf8");
-const block = src.slice(src.indexOf("const words"), src.indexOf("const extras"));
-const C = new Function(block + "return { sums };")();
+// The Fireworks money week (PR #14), kept here so the money helpers stay tested
+// now that main.js is back to plain adding and taking away.
+const fireworksShop = [
+  { emoji: "🚀", name: "Rocket", cost: 45 },
+  { emoji: "🧨", name: "Firecracker", cost: 40 },
+  { emoji: "✨", name: "Sparkler", cost: 20 },
+  { emoji: "🎆", name: "Fountain", cost: 30 },
+];
+const sums = [
+  { type: "add", a: { emoji: "🧨", name: "Poppers", article: "", verb: "cost", cost: 15 }, b: { emoji: "🚀", name: "rocket", article: "a", verb: "costs", cost: 35 } },
+  { type: "add", a: { emoji: "🎆", name: "fountain", article: "a", verb: "costs", cost: 10 }, b: { emoji: "🎇", name: "catherine wheel", article: "a", verb: "costs", cost: 25 } },
+  { type: "exact", prompt: "Which fireworks could you buy with exactly £1.00?", shop: fireworksShop, options: [
+    { label: "🧨 40p + 🎆 30p + 🎆 30p", total: 100 },
+    { label: "🚀 45p + 🎆 30p + ✨ 20p", total: 95 },
+    { label: "🚀 45p + 🧨 40p + ✨ 20p", total: 105 },
+    { label: "✨ 20p + ✨ 20p + ✨ 20p + 🎆 30p", total: 90 },
+  ] },
+  { type: "add", a: { emoji: "🚀", name: "rocket", article: "a", verb: "costs", cost: 35 }, b: { emoji: "🎆", name: "bottle firework", article: "a", verb: "costs", cost: 30 } },
+  { type: "add", a: { emoji: "🎇", name: "catherine wheel", article: "a", verb: "costs", cost: 25 }, b: { emoji: "🎆", name: "bottle firework", article: "a", verb: "costs", cost: 30 } },
+  { type: "exact", prompt: "Which fireworks could you buy with exactly £1.00?", shop: fireworksShop, options: [
+    { label: "✨ 20p + ✨ 20p + ✨ 20p + 🧨 40p", total: 100 },
+    { label: "🚀 45p + 🚀 45p + ✨ 20p", total: 110 },
+    { label: "🧨 40p + 🎆 30p + ✨ 20p", total: 90 },
+    { label: "🚀 45p + 🧨 40p + ✨ 20p", total: 105 },
+  ] },
+];
+const C = { sums };
 const qs = parseMaths(C.sums);
 
 describe("reading pence answers", () => {
@@ -36,7 +59,7 @@ describe("coins for a price", () => {
   });
 });
 
-describe("this week's fireworks questions", () => {
+describe("the fireworks money questions (PR #14)", () => {
   it("has 4 altogether questions from sheet 1 and 2 exactly-£1 questions from sheet 2", () => {
     expect(qs).toHaveLength(6);
     const adds = qs.filter((q) => q.type === "add");
