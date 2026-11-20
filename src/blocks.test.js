@@ -59,3 +59,40 @@ describe("exchanging ones in addition", () => {
     expect(blocksHtml(parseSum("67-25"))).not.toContain("bt-exchange");
   });
 });
+
+describe("exchanging a ten in taking away (drawing tens and ones, no column method)", () => {
+  it.each([
+    ["85-56", 7, 15, 29], ["62-38", 5, 12, 24], ["72-26", 6, 12, 46], ["83-48", 7, 13, 35], ["95-47", 8, 15, 48],
+  ])("%s swaps 1 ten for 10 ones first, then crosses out, without showing the answer", (raw, tensAfter, onesAfter, answer) => {
+    const sum = parseSum(raw), m = blocksModel(sum);
+    expect(sum.answer).toBe(answer);
+    // the start number is drawn as it is, nothing crossed out
+    expect(m.groups[0].tens).toHaveLength(Math.floor(sum.a / 10));
+    expect(m.groups[0].ones).toHaveLength(sum.a % 10);
+    expect([...m.groups[0].tens, ...m.groups[0].ones].some(Boolean)).toBe(false);
+    // after the swap: one fewer ten, ten more ones (still the same number)
+    expect(m.after.tens).toHaveLength(tensAfter);
+    expect(m.after.ones).toHaveLength(onesAfter);
+    expect(tensAfter * 10 + onesAfter).toBe(sum.a);
+    expect(m.after.fresh.filter(Boolean)).toHaveLength(10);
+    // crossing out the take-away leaves exactly the answer for Austin to count
+    expect(m.after.tens.filter(Boolean)).toHaveLength(Math.floor(sum.b / 10));
+    expect(m.after.ones.filter(Boolean)).toHaveLength(sum.b % 10);
+    expect(m.after.tens.filter((x) => !x).length * 10 + m.after.ones.filter((x) => !x).length).toBe(answer);
+    const html = blocksHtml(sum);
+    expect(html).toContain("Swap 1 ten for 10 ones:");
+    expect(html).toContain(`Now ${sum.a} is ${tensAfter} tens and ${onesAfter} ones.`);
+    expect(html).toContain("Count what's left!");
+    const swap = html.split('<div class="bt-swap">')[1].split('<p class="bt-note">')[0];
+    expect(swap.match(/class="bt-rod"/g)).toHaveLength(1);
+    expect(swap.match(/class="bt-one fresh"/g)).toHaveLength(10);
+    const words = html.replace(/<[^>]+>/g, " ");
+    expect(words).not.toMatch(new RegExp(`\\b${answer}\\b`)); // answer never written
+    expect(html).not.toMatch(/column/i);
+  });
+
+  it("taking away without enough tens or with enough ones needs no exchange", () => {
+    expect(blocksModel(parseSum("67-25")).exchange).toBeNull();
+    expect(blocksModel(parseSum("9-5")).exchange).toBeNull();
+  });
+});

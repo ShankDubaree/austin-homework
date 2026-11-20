@@ -9,16 +9,17 @@
 export const NIGHTS = ["Monday", "Tuesday", "Wednesday", "Thursday"];
 
 // How many questions of each kind go into one night.
-export const PER_NIGHT = { spell: 4, maths: 3, world: 2, command: 1, noun: 1, suffix: 1, join: 1 };
+// 5 spellings a night: with 10 words, Monday & Wednesday get words 1-5, Tuesday & Thursday words 6-10.
+// Sums: 3 a night handed out in order, so 10 sums cover all four nights (Thursday wraps to the first two).
+// Continents and handwriting were taken out of the nightly tests (Nov 2026); they stay in Practice.
+export const PER_NIGHT = { spell: 5, maths: 3, command: 1, noun: 1, suffix: 1, join: 1 };
 // Handwriting letters per night (picked from that night's spelling words, see below).
 export const HW_PER_NIGHT = 2;
 
 // The order Austin meets them in. Grammar is one section made of the four grammar kinds.
 export const SECTIONS = [
   { id: "spell", name: "Spellings", kinds: ["spell"] },
-  { id: "hw", name: "Handwriting", kinds: ["hw"] },
   { id: "maths", name: "Maths", kinds: ["maths"] },
-  { id: "world", name: "Continents", kinds: ["world"] },
   { id: "grammar", name: "Grammar hunt", kinds: ["command", "noun", "suffix", "join"] },
 ];
 
@@ -61,19 +62,21 @@ export function handwritingLetters(spellByNight, available, perNight = HW_PER_NI
 // content: { spell: [...words], maths: [...], world: [...], command: [...], noun: [...], suffix: [...], join: [...],
 //            letters: [...letters we have handwriting shapes for] }
 // Returns one plan per night: { name, spell: [...], hw: [...], maths: [...], ... }
-export function planNights(content, perNight = PER_NIGHT) {
+// Handwriting is no longer part of the nightly tests, so plan.hw is only filled in when asked
+// for ({ handwriting: true }); handwritingLetters is kept for that and its own tests.
+export function planNights(content, perNight = PER_NIGHT, { handwriting = false } = {}) {
   const split = {};
   for (const kind of Object.keys(perNight)) split[kind] = splitAcrossNights(content[kind], perNight[kind]);
-  const hw = handwritingLetters(split.spell || NIGHTS.map(() => []), content.letters || []);
+  const hw = handwriting ? handwritingLetters(split.spell || NIGHTS.map(() => []), content.letters || []) : null;
   return NIGHTS.map((name, n) => {
     const plan = { name };
     for (const kind of Object.keys(perNight)) plan[kind] = split[kind][n];
-    plan.hw = hw[n];
+    if (hw) plan.hw = hw[n];
     return plan;
   });
 }
 
-// The questions for one night, in order: spellings, handwriting, sums, continents, then grammar.
+// The questions for one night, in order: spellings, sums, then grammar.
 export function nightQuestions(plan) {
   const qs = [];
   for (const section of SECTIONS) {

@@ -72,16 +72,17 @@ describe("planNights with this week's list sizes", () => {
     expect(NIGHTS).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday"]);
   });
 
-  it("puts 4 spellings, 3 maths, 2 continents and 1 of each grammar kind in every night", () => {
+  it("puts 5 spellings, 3 maths and 1 of each grammar kind in every night (no continents or handwriting)", () => {
     for (const p of plans) {
-      expect(p.spell).toHaveLength(4);
+      expect(p.spell).toHaveLength(5);
       expect(p.maths).toHaveLength(3);
-      expect(p.world).toHaveLength(2);
+      expect(p.world).toBeUndefined();
+      expect(p.hw).toBeUndefined();
       for (const kind of ["command", "noun", "suffix", "join"]) expect(p[kind]).toHaveLength(1);
-      expect(p.hw).toHaveLength(2);
-      expect(nightQuestions(p)).toHaveLength(15);
+      expect(nightQuestions(p)).toHaveLength(12);
+      expect(nightQuestions(p).some((q) => q.kind === "world" || q.kind === "hw")).toBe(false);
     }
-    expect(PER_NIGHT).toMatchObject({ spell: 4, maths: 3, world: 2, command: 1, noun: 1, suffix: 1, join: 1 });
+    expect(PER_NIGHT).toEqual({ spell: 5, maths: 3, command: 1, noun: 1, suffix: 1, join: 1 });
   });
 
   it("gives each night different maths and grammar (there are enough of those)", () => {
@@ -91,26 +92,32 @@ describe("planNights with this week's list sizes", () => {
     }
   });
 
-  it("uses all 10 words before repeating any, and all 7 continents with just one repeat", () => {
+  it("Monday & Wednesday spell words 1-5, Tuesday & Thursday words 6-10, so every word twice", () => {
+    expect(plans[0].spell).toEqual(["w0", "w1", "w2", "w3", "w4"]);
+    expect(plans[1].spell).toEqual(["w5", "w6", "w7", "w8", "w9"]);
+    expect(plans[2].spell).toEqual(plans[0].spell);
+    expect(plans[3].spell).toEqual(plans[1].spell);
     const words = count(plans.map((p) => p.spell));
     expect(words.size).toBe(10);
-    expect([...words.values()].filter((n) => n === 2)).toHaveLength(6); // 16 slots, 10 words
-    const places = count(plans.map((p) => p.world.map((c) => c.id)));
-    expect(places.size).toBe(7);
-    expect([...places.values()].filter((n) => n === 2)).toHaveLength(1); // 8 slots, 7 continents
+    expect([...words.values()].every((n) => n === 2)).toBe(true);
   });
 
-  it("orders a night spellings, handwriting, maths, continents, then grammar", () => {
+  it("orders a night spellings, maths, then grammar", () => {
     expect(nightQuestions(plans[0]).map((q) => q.kind)).toEqual([
-      "spell", "spell", "spell", "spell", "hw", "hw", "maths", "maths", "maths", "world", "world", "command", "noun", "suffix", "join",
+      "spell", "spell", "spell", "spell", "spell", "maths", "maths", "maths", "command", "noun", "suffix", "join",
     ]);
+  });
+
+  it("can still plan handwriting letters if asked, but not by default", () => {
+    expect(planNights(week(), PER_NIGHT, { handwriting: true })[0].hw).toHaveLength(2);
+    expect(planNights(week())[0].hw).toBeUndefined();
   });
 
   it("follows the lists, so new spellings give new nights", () => {
     const next = week();
     next.spell = list("new", 10);
     const plansNext = planNights(next);
-    expect(plansNext[0].spell).toEqual(["new0", "new1", "new2", "new3"]);
+    expect(plansNext[0].spell).toEqual(["new0", "new1", "new2", "new3", "new4"]);
     expect(nightSignature(plansNext[0])).not.toBe(nightSignature(plans[0]));
     expect(nightSignature(planNights(week())[0])).toBe(nightSignature(plans[0]));
   });
